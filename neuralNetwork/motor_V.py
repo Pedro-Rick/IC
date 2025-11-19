@@ -18,29 +18,29 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 
 train_data = pd.DataFrame()
 
-train_data['hysteresis'] = pd.read_csv('../dataset/V/hysteresis_all_scaled_train.csv')['total']
-train_data['id'] = pd.read_csv('../dataset/V/idiq_all_scaled_train.csv')['id']
-train_data['iq'] = pd.read_csv('../dataset/V/idiq_all_scaled_train.csv')['iq']
-train_data['joule'] = pd.read_csv('../dataset/V/joule_all_scaled_train.csv')['total']
-train_data['speed'] = pd.read_csv('../dataset/V/speed_all_scaled_train.csv')['N']
-train_data['d1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_train.csv')['d1']
-train_data['d2'] = pd.read_csv('../dataset/V/xgeom_all_scaled_train.csv')['d2']
-train_data['d3'] = pd.read_csv('../dataset/V/xgeom_all_scaled_train.csv')['d3']
-train_data['r1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_train.csv')['r1']
-train_data['t1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_train.csv')['t1']
+train_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\hysteresis_all_scaled_train.csv')['total']
+train_data['id'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\idiq_all_scaled_train.csv')['id']
+train_data['iq'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\idiq_all_scaled_train.csv')['iq']
+train_data['joule'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\joule_all_scaled_train.csv')['total']
+train_data['speed'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\speed_all_scaled_train.csv')['N']
+train_data['d1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_train.csv')['d1']
+train_data['d2'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_train.csv')['d2']
+train_data['d3'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_train.csv')['d3']
+train_data['r1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_train.csv')['r1']
+train_data['t1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_train.csv')['t1']
 
 test_data = pd.DataFrame()
 
-test_data['hysteresis'] = pd.read_csv('../dataset/V/hysteresis_all_scaled_test.csv')['total']
-test_data['id'] = pd.read_csv('../dataset/V/idiq_all_scaled_test.csv')['id']
-test_data['iq'] = pd.read_csv('../dataset/V/idiq_all_scaled_test.csv')['iq']
-test_data['joule'] = pd.read_csv('../dataset/V/joule_all_scaled_test.csv')['total']
-test_data['speed'] = pd.read_csv('../dataset/V/speed_all_scaled_test.csv')['N']
-test_data['d1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_test.csv')['d1']
-test_data['d2'] = pd.read_csv('../dataset/V/xgeom_all_scaled_test.csv')['d2']
-test_data['d3'] = pd.read_csv('../dataset/V/xgeom_all_scaled_test.csv')['d3']
-test_data['r1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_test.csv')['r1']
-test_data['t1'] = pd.read_csv('../dataset/V/xgeom_all_scaled_test.csv')['t1']
+test_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\hysteresis_all_scaled_test.csv')['total']
+test_data['id'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\idiq_all_scaled_test.csv')['id']
+test_data['iq'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\idiq_all_scaled_test.csv')['iq']
+test_data['joule'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\joule_all_scaled_test.csv')['total']
+test_data['speed'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\speed_all_scaled_test.csv')['N']
+test_data['d1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_test.csv')['d1']
+test_data['d2'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_test.csv')['d2']
+test_data['d3'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_test.csv')['d3']
+test_data['r1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_test.csv')['r1']
+test_data['t1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\V\xgeom_all_scaled_test.csv')['t1']
 
 
 
@@ -67,13 +67,13 @@ class RegressionModel(nn.Module):
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    info.to_csv('./data/motor_V_info.csv')
+    info.to_csv(r'C:\Users\Patu\IC-1\results_patu\V\motor_V_Jou_info.csv') # mudar Jou e Hys
     return info
 
 def register_txt(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     
-    with open('./data/motor_V_log.txt') as file:
+    with open(r'C:\Users\Patu\IC-1\results_patu\V\motor_V_Jou_log.txt', 'a') as file: # mudar Jou e Hys
         file.write("\n")
         
         file.write(f"Test ID: {new_row.neurons}-{new_row.layers}-{new_row.learn_rate}-{new_row.epochs}\n")
@@ -98,17 +98,19 @@ def register_txt(contents, info):
 
 target = ['hysteresis', 'joule']
 
+variable = 'hysteresis' # mudar joule e hysteresis
+
 neurons = [10, 15, 20, 25, 30]
 layers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-learning_rates = [0.1, 0.05, 0.01]
+learning_rates = [0.1, 0.01]
 epochs = 1000
 
 X_train = torch.tensor(train_data.drop(columns = target).values, dtype=torch.float32)
-y_train = torch.tensor(train_data[target].values, dtype=torch.float32)
+y_train = torch.tensor(train_data[variable].values, dtype=torch.float32)
 X_test = torch.tensor(test_data.drop(columns = target).values, dtype=torch.float32)
-y_test = torch.tensor(test_data[target].values, dtype=torch.float32)
+y_test = torch.tensor(test_data[variable].values, dtype=torch.float32)
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'jou_score', 'jou_mse', 'jou_mape', 'time']
+columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time'] # mudar Jou e Hys
 info = pd.DataFrame(columns = columns)
 
 for i in range(len(neurons)):
@@ -117,7 +119,8 @@ for i in range(len(neurons)):
             print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
             
             input_dim = len(train_data.columns.drop(target))
-            output_dim = len(target)
+            # output_dim = len(target)
+            output_dim = 1
             
             model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
             
@@ -128,6 +131,7 @@ for i in range(len(neurons)):
 
             for a in range(epochs):
                 pred = model(X_train)
+                pred = pred.squeeze()
             
                 loss = loss_func(pred, y_train)
                 losses[a] = loss
@@ -141,19 +145,20 @@ for i in range(len(neurons)):
 
             print(f"\tFinished training model at {time}.\n")
 
-            hys_score = r2_score(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
-            hys_mse = mean_squared_error(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
-            hys_mape = mean_absolute_percentage_error(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
+            hys_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
+            hys_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            hys_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
 
-            jou_score = r2_score(y_pred[:, 1].detach().numpy(), y_test[:, 1].detach().numpy())
-            jou_mse = mean_squared_error(y_pred[:, 1].detach().numpy(), y_test[:, 1].detach().numpy())
-            jou_mape = mean_absolute_percentage_error(y_pred[:, 1].detach().numpy(), y_test[:, 1].detach().numpy())
+            # jou_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
+            # jou_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            # jou_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
 
             print(f"\tSpecs:")
             print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
-            print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
+            # print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
 
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, jou_score, jou_mse, jou_mape, time]
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]  # mudar Jou e Hys
             
             info = register_csv(contents, info)
             # register_txt(contents, info)
+print(f"the end")

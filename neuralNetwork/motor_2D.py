@@ -18,41 +18,41 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 
 train_data = pd.DataFrame()
 
-train_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\hysteresis_all_scaled_train.csv')['total']
-train_data['id'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\idiq_all_scaled_train.csv')['id']
-train_data['iq'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\idiq_all_scaled_train.csv')['iq']
-train_data['joule'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\joule_all_scaled_train.csv')['total']
-train_data['speed'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\speed_all_scaled_train.csv')['N']
-train_data['d1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d1']
-train_data['d2'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d2']
-train_data['d3'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d3']
-train_data['d4'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d4']
-train_data['d5'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d5']
-train_data['d6'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d6']
-train_data['d7'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d7']
-train_data['d8'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d8']
-train_data['d9'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['d9']
-train_data['r1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['r1']
-train_data['t1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_train.csv')['t1']
+train_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\hysteresis_all_scaled_train.csv')['total']
+train_data['id'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\idiq_all_scaled_train.csv')['id']
+train_data['iq'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\idiq_all_scaled_train.csv')['iq']
+train_data['joule'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\joule_all_scaled_train.csv')['total']
+train_data['speed'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\speed_all_scaled_train.csv')['N']
+train_data['d1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d1']
+train_data['d2'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d2']
+train_data['d3'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d3']
+train_data['d4'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d4']
+train_data['d5'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d5']
+train_data['d6'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d6']
+train_data['d7'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d7']
+train_data['d8'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d8']
+train_data['d9'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['d9']
+train_data['r1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['r1']
+train_data['t1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_train.csv')['t1']
 
 test_data = pd.DataFrame()
 
-test_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\hysteresis_all_scaled_test.csv')['total']
-test_data['id'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\idiq_all_scaled_test.csv')['id']
-test_data['iq'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\idiq_all_scaled_test.csv')['iq']
-test_data['joule'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\joule_all_scaled_test.csv')['total']
-test_data['speed'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\speed_all_scaled_test.csv')['N']
-test_data['d1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d1']
-test_data['d2'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d2']
-test_data['d3'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d3']
-test_data['d4'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d4']
-test_data['d5'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d5']
-test_data['d6'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d6']
-test_data['d7'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d7']
-test_data['d8'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d8']
-test_data['d9'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['d9']
-test_data['r1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['r1']
-test_data['t1'] = pd.read_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\dataset\2D\xgeom_all_scaled_test.csv')['t1']
+test_data['hysteresis'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\hysteresis_all_scaled_test.csv')['total']
+test_data['id'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\idiq_all_scaled_test.csv')['id']
+test_data['iq'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\idiq_all_scaled_test.csv')['iq']
+test_data['joule'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\joule_all_scaled_test.csv')['total']
+test_data['speed'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\speed_all_scaled_test.csv')['N']
+test_data['d1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d1']
+test_data['d2'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d2']
+test_data['d3'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d3']
+test_data['d4'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d4']
+test_data['d5'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d5']
+test_data['d6'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d6']
+test_data['d7'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d7']
+test_data['d8'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d8']
+test_data['d9'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['d9']
+test_data['r1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['r1']
+test_data['t1'] = pd.read_csv(r'C:\Users\Patu\IC-1\dataset\2D\xgeom_all_scaled_test.csv')['t1']
 
 
 
@@ -79,13 +79,13 @@ class RegressionModel(nn.Module):
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    info.to_csv(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\results_patu\2D\Joule\motor_2D_info.csv')
+    info.to_csv(r'C:\Users\Patu\IC-1\results_patu\2D\motor_2D_Hys_info.csv') # mudar Jou e Hys
     return info
 
 def register_txt(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     
-    with open(r'C:\Users\Patu\Documents\byanca_code\ic_motores\IniciacaoCientifica\results_patu\2D\Joule/data/motor_2D_log.txt', 'a') as file:
+    with open(r'C:\Users\Patu\IC-1\results_patu\2D\data\motor_2D_Hys_log.txt', 'a') as file: # mudar Jou e Hys
         file.write("\n")
         
         file.write(f"Test ID: {new_row.neurons}-{new_row.layers}-{new_row.learn_rate}-{new_row.epochs}\n")
@@ -110,7 +110,7 @@ def register_txt(contents, info):
 
 target = ['hysteresis', 'joule']
 
-variable = 'joule'
+variable = 'hysteresis' # mudar joule e hysteresis
 
 neurons = [8, 15, 20, 25, 30, 32]
 layers = [1, 3, 5, 10, 15, 20]
@@ -122,7 +122,7 @@ y_train = torch.tensor(train_data[variable].values, dtype=torch.float32)
 X_test = torch.tensor(test_data.drop(columns = target).values, dtype=torch.float32)
 y_test = torch.tensor(test_data[variable].values, dtype=torch.float32)
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'jou_score', 'jou_mse', 'jou_mape', 'time']
+columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time']  # mudar Jou e Hys
 info = pd.DataFrame(columns = columns)
 
 for i in range(len(neurons)):
@@ -157,19 +157,20 @@ for i in range(len(neurons)):
 
             print(f"\tFinished training model at {time}.\n")
 
-            # hys_score = r2_score(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
-            # hys_mse = mean_squared_error(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
-            # hys_mape = mean_absolute_percentage_error(y_pred[:, 0].detach().numpy(), y_test[:, 0].detach().numpy())
+            hys_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
+            hys_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            hys_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
 
-            jou_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
-            jou_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
-            jou_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            # jou_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
+            # jou_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            # jou_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
 
             print(f"\tSpecs:")
-            #print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
-            print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
+            print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
+            #print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
 
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, jou_score, jou_mse, jou_mape, time]
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time] # mudar Jou e Hys
             
             info = register_csv(contents, info)
             # register_txt(contents, info)
+print(f"the end")
