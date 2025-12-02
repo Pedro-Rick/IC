@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 # IC
 iniciação cientifica sobre desempenho de motores elétricos
 
+=======
+# IC
+iniciação cientifica sobre desempenho de motores elétricos
+
+>>>>>>> 45db689e323ee8f7b8339cb14469829a1981390d
 OI PATU E A BIANCA CRIEI O REPOSITORIO PRA VC É ESSSE AQUI EU SO PEGUEI O Q VC TINHA CRIADO E ADICIONEI OS ARQUIVOS DAI VC SÓ FAZ TUDO AQUI COMITTA E DA PUSH DEUS TE ABENCOE MEU FILHO SE VC QUISEER ADICIONAR MAIS COISA SO ARRASTA PRA CA CE TLGD NE ABRACO
