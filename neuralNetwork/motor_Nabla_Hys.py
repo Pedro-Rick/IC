@@ -76,40 +76,14 @@ def register_csv(contents, info):
     info.to_csv(r'../results_patu/Nabla/motor_Nabla_Hys_info.csv') # mudar Jou e Hys
     return info
 
-def register_txt(contents, info):
-     new_row = pd.DataFrame([contents], columns = info.columns)
-    
-     with open(r'../results_patu/Nabla/motor_Nabla_Hys_log.txt', 'a') as file: # mudar Jou e Hys
-         file.write("\n")
-        
-         file.write(f"Test ID: {new_row.neurons}-{new_row.layers}-{new_row.learn_rate}-{new_row.epochs}\n")
-         file.write(f"Test run at {new_row.time}\n")
-    
-         file.write("\n")
-        
-         file.write("\t> Parameters:\n")
-         file.write(f"\t\t>> Number of neurons: {new_row.neurons}\n")
-         file.write(f"\t\t>> Number of layers: {new_row.layers}\n")
-         file.write(f"\t\t>> Learning rate: {new_row.learn_rate}\n")
-         file.write(f"\t\t>> Number of epochs: {new_row.epochs}\n")
-    
-         file.write("\n")
-    
-         file.write("\t> Results:\n")
-         file.write(f"\t\t>> Score: {new_row.score}\n")
-         file.write(f"\t\t>> Mean squared error: {new_row.mse}\n")
-         file.write(f"\t\t>> MAPE: {new_row.mape}\n")
-    
-         file.write("\n")
-
 target = ['hysteresis', 'joule']
 
 variable = 'hysteresis' # mudar joule e hysteresis
 
-neurons = [10, 15, 20, 25, 30]
-layers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+neurons = [10, 200 + 1, 10]
+layers = [1, 2]
 learning_rates = [0.1, 0.01]
-epochs = 1000
+epochs = 100
 
 X_train = torch.tensor(train_data.drop(columns = target).values, dtype=torch.float32)
 y_train = torch.tensor(train_data[variable].values, dtype=torch.float32)
