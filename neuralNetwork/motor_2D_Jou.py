@@ -131,9 +131,9 @@ for i in range(len(neurons)):
 
             print(f"/tFinished training model at {time}./n")
 
-            jou_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
-            jou_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
-            jou_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
+            jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+            jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
             print(f"/tSpecs:")
             print(f"/t/tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}./n/n")

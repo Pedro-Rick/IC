@@ -119,10 +119,9 @@ for i in range(len(neurons)):
 
             print(f"\tFinished training model at {time}.\n")
 
-            hys_score = r2_score(y_pred.detach().numpy(), y_test.detach().numpy())
-            hys_mse = mean_squared_error(y_pred.detach().numpy(), y_test.detach().numpy())
-            hys_mape = mean_absolute_percentage_error(y_pred.detach().numpy(), y_test.detach().numpy())
-
+            hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+            hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
             print(f"\tSpecs:")
             print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
 
