@@ -80,7 +80,7 @@ target = ['hysteresis', 'joule']
 
 variable = 'hysteresis' # mudar joule e hysteresis
 
-neurons = [10, 200 + 1, 10]
+neurons = np.arange(10, 200 + 1, 10)
 layers = [1, 2]
 learning_rates = [0.1, 0.01]
 epochs = 100
