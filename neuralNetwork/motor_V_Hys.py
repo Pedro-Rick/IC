@@ -67,7 +67,7 @@ class RegressionModel(nn.Module):
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    info.to_csv(r'../results_patu/V/motor_V_Jou_info.csv') # mudar Jou e Hys
+    info.to_csv(r'../results_patu/V/motor_V_Hys_info.csv') # mudar Jou e Hys
     return info
 
 target = ['hysteresis', 'joule']
