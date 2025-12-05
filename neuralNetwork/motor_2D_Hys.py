@@ -77,17 +77,10 @@ def register_csv(contents, info):
 
 target = ['hysteresis']
 
-variable = 'hysteresis' # mudar joule e hysteresis
-
-# neurons = np.arange(10, 200 + 1, 10)
-neurons = [1]
-#layers = [1, 2]
-#learning_rates = [0.1, 0.01]
-epochs = 1
-
-layers = [1]
-learning_rates = [1]
-
+neurons = np.arange(10, 200 + 1, 10)
+layers = [1, 2]
+learning_rates = [0.1, 0.01]
+epochs = 100
 
 train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
 test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
@@ -114,8 +107,6 @@ for i in range(len(neurons)):
             
             loss_func = nn.MSELoss()
             optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
-            
-            losses = torch.zeros(epochs)
 
             for a in range(epochs):
                 model.train()
