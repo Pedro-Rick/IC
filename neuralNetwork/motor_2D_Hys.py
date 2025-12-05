@@ -97,7 +97,7 @@ info = pd.DataFrame(columns = columns)
 for i in range(len(neurons)):
     for j in range(len(layers)):
         for k in range(len(learning_rates)):
-            print(f"/nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}/n")
+            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
             
             input_dim = len(train_data.columns.drop(target))
             # output_dim = len(target)
@@ -120,7 +120,7 @@ for i in range(len(neurons)):
             
             time = datetime.datetime.now()
 
-            print(f"/tFinished training model at {time}./n")
+            print(f"\tFinished training model at {time}.\n")
 
             y_pred_list = []
             y_test_list = []
@@ -140,8 +140,8 @@ for i in range(len(neurons)):
             hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
             hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
-            print(f"/tSpecs:")
-            print(f"/t/thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}./n")
+            print(f"\tSpecs:")
+            print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
 
             contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time] # mudar Jou e Hys
             
