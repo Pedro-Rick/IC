@@ -147,4 +147,4 @@ for i in range(len(neurons)):
             
             info = register_csv(contents, info)
             # register_txt(contents, info)
-print(f"the end")
+print(f"the end meu mano")
