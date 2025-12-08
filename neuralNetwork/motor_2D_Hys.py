@@ -72,7 +72,7 @@ class MotorDataset(Dataset):
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    info.to_csv(r'../results_patu/2D/motor_2D_Hys_info.csv') # mudar Jou e Hys
+    info.to_csv(r'../results_patu/2D/motor_2D_Hys_info.csv')
     return info
 
 target = ['hysteresis']
@@ -90,8 +90,7 @@ BATCH_SIZE = 256
 train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
 test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
 
-
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time']  # mudar Jou e Hys
+columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time']
 info = pd.DataFrame(columns = columns)
 
 for i in range(len(neurons)):
@@ -100,7 +99,6 @@ for i in range(len(neurons)):
             print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
             
             input_dim = len(train_data.columns.drop(target))
-            # output_dim = len(target)
             output_dim = 1
             
             model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
@@ -143,8 +141,8 @@ for i in range(len(neurons)):
             print(f"\tSpecs:")
             print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
 
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time] # mudar Jou e Hys
-            
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time] 
+
             info = register_csv(contents, info)
-            # register_txt(contents, info)
-print(f"the end meu mano")
+            
+print(f"the end")
