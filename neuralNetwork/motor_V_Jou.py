@@ -16,7 +16,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 
 # data loading
 
-MOTOR = "2D"
+MOTOR = "V"
 PATH = f"../dataset/{MOTOR}/"
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE = "_all_scaled_test.csv"
