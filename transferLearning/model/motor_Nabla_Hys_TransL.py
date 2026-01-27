@@ -10,11 +10,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-
-# ======================
-# DATA LOADING
-# ======================
-
 MOTOR = "Nabla"
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -24,35 +19,18 @@ TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
 train_data = pd.DataFrame()
-train_data = pd.concat([
-    train_data,
-    pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")
-], axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([
-    train_data,
-    pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")
-], axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
 train_data["joule"] = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
 
 test_data = pd.DataFrame()
-test_data = pd.concat([
-    test_data,
-    pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")
-], axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([
-    test_data,
-    pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")
-], axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
-
-
-# ======================
-# MODELS
-# ======================
 
 class transL(nn.Module):
     def __init__(self, input_dim, neurons, layers):
@@ -81,13 +59,11 @@ class mixedModel(nn.Module):
     ):
         super().__init__()
 
-        # 🔁 Adapter Nabla (12) → V (9)
         self.input_adapter = nn.Sequential(
             nn.Linear(input_dim_nabla, input_dim_V),
             nn.ReLU()
         )
 
-        # 🔒 Backbone V (espera 9 entradas)
         self.transL = transL(
             input_dim=input_dim_V,
             neurons=transL_neurons,
@@ -108,10 +84,6 @@ class mixedModel(nn.Module):
         x = self.transL(x)
         return self.head(x)
 
-
-# ======================
-# DATASET
-# ======================
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
@@ -136,27 +108,19 @@ def register_csv(contents, info):
     info.to_csv(SAVE_PATH, index=False)
     return info
 
-
-# ======================
-# TRAIN SETUP
-# ======================
-
 target = ["hysteresis"]
+
+BATCH_SIZE = 256
 
 train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
 test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 
-train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
-test_loader  = DataLoader(test_dataset, batch_size=256, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# 🔢 Dimensões corretas
+# Dimensiona corretamente
 input_dim_nabla = train_data.drop(columns=target).shape[1]  # 12
 INPUT_DIM_V     = 9
-
-
-# ======================
-# TRANSFER SETTINGS
-# ======================
 
 TRANS_NEURONS = 200
 TRANS_LAYERS  = 2
@@ -164,27 +128,14 @@ TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys_neurons200_layers2
 
 assert TRANS_WEIGHTS.exists(), f"Arquivo de pesos não encontrado: {TRANS_WEIGHTS}"
 
-
-# ======================
-# GRID (HEAD)
-# ======================
-
 head_neurons = [16, 32, 64]
 head_layers  = [1, 2]
 learning_rates = [1e-3, 5e-4]
 epochs = 100
 
-columns = [
-    "head_neurons", "head_layers", "lr", "epochs",
-    "hys_score", "hys_mse", "hys_mape", "time"
-]
+columns = [ "head_neurons", "head_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
 
 info = pd.DataFrame(columns=columns)
-
-
-# ======================
-# TRAIN LOOP
-# ======================
 
 for hn in head_neurons:
     for hl in head_layers:
@@ -202,10 +153,10 @@ for hn in head_neurons:
                 head_layers=hl
             )
 
-            # 🔥 LOAD CORRETO DOS PESOS
+            # LOAD DOS PESOS
             state = torch.load(TRANS_WEIGHTS, map_location="cpu")
 
-            # converte nomes: linear.X → net.X
+            # converte nomes linear.X → net.X
             new_state = {}
             for k, v in state.items():
                 if k.startswith("linear."):
@@ -213,12 +164,6 @@ for hn in head_neurons:
                     new_state[new_key] = v
 
             missing, unexpected = model.transL.load_state_dict(new_state, strict=False)
-
-            print("Missing keys:", missing)
-            print("Unexpected keys:", unexpected)
-
-            print("Missing keys:", missing)
-            print("Unexpected keys:", unexpected)
 
             optimizer = torch.optim.Adam(model.parameters(), lr=lr)
             loss_func = nn.MSELoss()
@@ -257,4 +202,4 @@ for hn in head_neurons:
 
             info = register_csv(contents, info)
 
-print("\n=== FIM ===")
+print("\nFIM")
