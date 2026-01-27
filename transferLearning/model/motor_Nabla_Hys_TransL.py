@@ -3,67 +3,94 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import datetime
-import csv
 import os
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils import data
-from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSampler
+from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
-
-# data loading
-
 from pathlib import Path
-import pandas as pd
+
+
+# ======================
+# DATA LOADING
+# ======================
 
 MOTOR = "Nabla"
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
+
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
 train_data = pd.DataFrame()
-
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data = pd.concat([train_data, pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data = pd.concat([train_data, pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
-train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
-
+train_data["joule"] = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
 
 test_data = pd.DataFrame()
-
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data = pd.concat([test_data, pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data = pd.concat([test_data, pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
-test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
+test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
 
+# ======================
+# MODELS
+# ======================
 
-class RegressionModel(nn.Module):
-    
-    def __init__(self, input_dim, output_dim, neurons = 5, layers = 1):
+class transL(nn.Module):
+    def __init__(self, input_dim, neurons, layers):
         super().__init__()
 
-        modules = []
-        
-        modules.append(nn.Linear(input_dim, neurons))
-        modules.append(nn.ReLU())
-        for i in range(layers):
-            modules.append(nn.Linear(neurons, neurons))
-            modules.append(nn.ReLU())
-        modules.append(nn.Linear(neurons, output_dim))
-        
-        self.linear = nn.Sequential(*modules)
-        
+        modules = [nn.Linear(input_dim, neurons), nn.ReLU()]
+        for _ in range(layers):
+            modules += [nn.Linear(neurons, neurons), nn.ReLU()]
+
+        self.net = nn.Sequential(*modules)
+
     def forward(self, x):
-        x = self.linear(x)
-        return x
+        return self.net(x)
+
+
+class mixedModel(nn.Module):
+    def __init__(self, input_dim_model2, output_dim,
+                 transL_input_dim, transL_neurons, transL_layers,
+                 head_neurons, head_layers):
+        super().__init__()
+
+        self.input_adapter = nn.Sequential(
+            nn.Linear(input_dim_model2, transL_input_dim),
+            nn.ReLU()
+        )
+
+        self.transL = transL(
+            transL_input_dim, transL_neurons, transL_layers
+        )
+
+        head_modules = []
+        in_dim = transL_neurons
+        for _ in range(head_layers):
+            head_modules += [nn.Linear(in_dim, head_neurons), nn.ReLU()]
+            in_dim = head_neurons
+
+        head_modules.append(nn.Linear(in_dim, output_dim))
+        self.head = nn.Sequential(*head_modules)
+
+    def forward(self, x):
+        x = self.input_adapter(x)
+        x = self.transL(x)
+        return self.head(x)
+
+
+# ======================
+# DATASET
+# ======================
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
@@ -73,96 +100,115 @@ class MotorDataset(Dataset):
     def __len__(self):
         return len(self.X)
 
-    def __getitem__(self, index):
-        return self.X[index], self.y[index]
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
 
-def register_csv(contents, info):
-    new_row = pd.DataFrame([contents], columns = info.columns)
-    info = pd.concat([info, new_row])
-    BASE_DIR = Path(__file__).resolve().parent
-    SAVE_PATH = BASE_DIR / ".." / "transL_results" / "motor_Nabla_Hys_TransL_info.csv"
-    info.to_csv(SAVE_PATH, index=False)
-    return info
+
+# ======================
+# TRAIN SETUP
+# ======================
 
 target = ['hysteresis']
 
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
-learning_rates = [0.1, 0.01]
+train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
+test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
+
+train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
+test_loader  = DataLoader(test_dataset, batch_size=256, shuffle=False)
+
+input_dim = train_data.drop(columns=target).shape[1]
+
+
+# ======================
+# TRANSFER SETTINGS (FIXOS)
+# ======================
+
+TRANS_NEURONS = 140
+TRANS_LAYERS  = 1
+TRANS_WEIGHTS = "pesos_V_Hys_neurons140_layers1.pt"
+
+
+# ======================
+# GRID (SÓ DO HEAD)
+# ======================
+
+head_neurons = [16, 32, 64]
+head_layers  = [1, 2]
+learning_rates = [1e-3, 5e-4]
 epochs = 100
 
-train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
-test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
+columns = ['head_neurons', 'head_layers', 'lr', 'epochs',
+           'hys_score', 'hys_mse', 'hys_mape', 'time']
 
-BATCH_SIZE = 256
+info = pd.DataFrame(columns=columns)
 
-train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
-test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time'] 
+# ======================
+# TRAIN LOOP
+# ======================
 
-info = pd.DataFrame(columns = columns)
+for hn in head_neurons:
+    for hl in head_layers:
+        for lr in learning_rates:
 
-for i in range(len(neurons)):
-    for j in range(len(layers)):
-        for k in range(len(learning_rates)):
-            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
-            
-            input_dim = len(train_data.columns.drop(target))
-            
-            output_dim = 1
-            
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
-            
+            print(f"\nTraining TL model — head {hn}x{hl}, lr={lr}\n")
+
+            model = mixedModel(
+                input_dim_model2=input_dim,
+                output_dim=1,
+                transL_input_dim=input_dim,
+                transL_neurons=TRANS_NEURONS,
+                transL_layers=TRANS_LAYERS,
+                head_neurons=hn,
+                head_layers=hl
+            )
+
+            model.transL.load_state_dict(
+                torch.load(TRANS_WEIGHTS, map_location="cpu"),
+                strict=False
+            )
+
+            for param in model.transL.parameters():
+                param.requires_grad = False
+
+            optimizer = torch.optim.Adam(
+                filter(lambda p: p.requires_grad, model.parameters()),
+                lr=lr
+            )
+
             loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
 
-            for a in range(epochs):
+            for _ in range(epochs):
                 model.train()
                 for X, y in train_loader:
-                    pred_train = model(X)
-                    loss = loss_func(pred_train, y)
-                    
+                    optimizer.zero_grad()
+                    loss = loss_func(model(X), y)
                     loss.backward()
                     optimizer.step()
-                    optimizer.zero_grad()
-            
-            time = datetime.datetime.now()
-
-            print(f"\tFinished training model at {time}.\n")
-
-            y_pred_list = []
-            y_test_list = []
 
             model.eval()
+            y_pred, y_true = [], []
 
             with torch.no_grad():
                 for X, y in test_loader:
-                    pred_test = model(X)
-                    y_pred_list.append(pred_test)
-                    y_test_list.append(y)
-            
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
+                    y_pred.append(model(X))
+                    y_true.append(y)
 
-            hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-            hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-            hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            y_pred = torch.cat(y_pred)
+            y_true = torch.cat(y_true)
 
-            print(f"\tSpecs:")
-            print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n\n")
+            hys_score = r2_score(y_true.numpy(), y_pred.numpy())
+            hys_mse   = mean_squared_error(y_true.numpy(), y_pred.numpy())
+            hys_mape  = mean_absolute_percentage_error(y_true.numpy(), y_pred.numpy())
 
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
-            
-            info = register_csv(contents, info)
+            time = datetime.datetime.now()
 
-for i, layer in enumerate(model.linear):
-    if isinstance(layer, nn.Linear):
-        print(f"\nCamada Linear {i}")
-        print("Pesos (weight):")
-        print(layer.weight)
-        print("Bias:")
-        print(layer.bias)
+            info.loc[len(info)] = [
+                hn, hl, lr, epochs,
+                hys_score, hys_mse, hys_mape, time
+            ]
+
+            print(f"R2={hys_score:.4f} | MSE={hys_mse:.4e} | MAPE={hys_mape:.4f}")
 
 
-print(f"the end")
+print("\n=== FIM ===")
