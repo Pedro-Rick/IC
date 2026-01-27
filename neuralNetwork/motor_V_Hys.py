@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 import datetime
 import csv
@@ -14,28 +15,31 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSam
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-# data loading
-
 MOTOR = "V"
-PATH = f"../dataset/{MOTOR}/"
+
+BASE_DIR = Path(__file__).resolve().parent
+
+PATH = BASE_DIR.parent / "dataset" / MOTOR
+
 TRAIN_FILE = "_all_scaled_train.csv"
-TEST_FILE = "_all_scaled_test.csv"
- 
+TEST_FILE  = "_all_scaled_test.csv"
+
 train_data = pd.DataFrame()
 
-train_data = pd.concat([train_data, pd.read_csv(f'{PATH}idiq{TRAIN_FILE}').drop(columns = "Unnamed: 0")], axis = 1)
-train_data['speed'] = pd.read_csv(f'{PATH}speed{TRAIN_FILE}')['N']
-train_data = pd.concat([train_data, pd.read_csv(f'{PATH}xgeom{TRAIN_FILE}').drop(columns = "Unnamed: 0")], axis = 1)
-train_data['hysteresis'] = pd.read_csv(f'{PATH}hysteresis{TRAIN_FILE}')['total']
-train_data['joule'] = pd.read_csv(f'{PATH}joule{TRAIN_FILE}')['total']
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
+train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
+
 
 test_data = pd.DataFrame()
 
-test_data = pd.concat([test_data, pd.read_csv(f'{PATH}idiq{TEST_FILE}').drop(columns = "Unnamed: 0")], axis = 1)
-test_data['speed'] = pd.read_csv(f'{PATH}speed{TEST_FILE}')['N']
-test_data = pd.concat([test_data, pd.read_csv(f'{PATH}xgeom{TEST_FILE}').drop(columns = "Unnamed: 0")], axis = 1)
-test_data['hysteresis'] = pd.read_csv(f'{PATH}hysteresis{TEST_FILE}')['total']
-test_data['joule'] = pd.read_csv(f'{PATH}joule{TEST_FILE}')['total']
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
+test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
 
 class RegressionModel(nn.Module):
@@ -72,7 +76,9 @@ class MotorDataset(Dataset):
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    info.to_csv(r'../results_patu/V/motor_V_Hys_info.csv') 
+    BASE_DIR = Path(__file__).resolve().parent
+    SAVE_PATH = BASE_DIR / ".." / "results_patu" / "V" / "motor_V_Hys_info.csv"
+    info.to_csv(SAVE_PATH, index=False)
     return info
 
 target = ['hysteresis']
@@ -147,5 +153,11 @@ for i in range(len(neurons)):
             contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
             
             info = register_csv(contents, info)
+
+SAVE_PATH = (BASE_DIR.parent / "transferLearning" / "data_pesos" / "data_pesos_V_Hys.pt")
+
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+torch.save(model.state_dict(), SAVE_PATH)
             
 print(f"the end")
