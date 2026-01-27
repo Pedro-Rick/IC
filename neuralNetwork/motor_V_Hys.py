@@ -83,10 +83,10 @@ def register_csv(contents, info):
 
 target = ['hysteresis']
 
-neurons = [10]
-layers = [1]
-learning_rates = [0.1]
-epochs = 5
+neurons = np.arange(10, 200 + 1, 10)
+layers = [1, 2]
+learning_rates = [0.1, 0.01]
+epochs = 100
 
 train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
 test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
