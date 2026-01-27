@@ -1,16 +1,14 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 import datetime
-import os
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
-from pathlib import Path
 
 
 # ======================
@@ -26,16 +24,28 @@ TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
 train_data = pd.DataFrame()
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+train_data = pd.concat([
+    train_data,
+    pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")
+], axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+train_data = pd.concat([
+    train_data,
+    pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")
+], axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
 train_data["joule"] = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
 
 test_data = pd.DataFrame()
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+test_data = pd.concat([
+    test_data,
+    pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")
+], axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+test_data = pd.concat([
+    test_data,
+    pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")
+], axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
@@ -59,18 +69,29 @@ class transL(nn.Module):
 
 
 class mixedModel(nn.Module):
-    def __init__(self, input_dim_model2, output_dim,
-                 transL_input_dim, transL_neurons, transL_layers,
-                 head_neurons, head_layers):
+    def __init__(
+        self,
+        input_dim_nabla,
+        input_dim_V,
+        output_dim,
+        transL_neurons,
+        transL_layers,
+        head_neurons,
+        head_layers
+    ):
         super().__init__()
 
+        # 🔁 Adapter Nabla (12) → V (9)
         self.input_adapter = nn.Sequential(
-            nn.Linear(input_dim_model2, transL_input_dim),
+            nn.Linear(input_dim_nabla, input_dim_V),
             nn.ReLU()
         )
 
+        # 🔒 Backbone V (espera 9 entradas)
         self.transL = transL(
-            transL_input_dim, transL_neurons, transL_layers
+            input_dim=input_dim_V,
+            neurons=transL_neurons,
+            layers=transL_layers
         )
 
         head_modules = []
@@ -120,7 +141,7 @@ def register_csv(contents, info):
 # TRAIN SETUP
 # ======================
 
-target = ['hysteresis']
+target = ["hysteresis"]
 
 train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
 test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
@@ -128,7 +149,9 @@ test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=256, shuffle=False)
 
-input_dim = train_data.drop(columns=target).shape[1]
+# 🔢 Dimensões corretas
+input_dim_nabla = train_data.drop(columns=target).shape[1]  # 12
+INPUT_DIM_V     = 9
 
 
 # ======================
@@ -151,8 +174,10 @@ head_layers  = [1, 2]
 learning_rates = [1e-3, 5e-4]
 epochs = 100
 
-columns = ['head_neurons', 'head_layers', 'lr', 'epochs',
-           'hys_score', 'hys_mse', 'hys_mape', 'time']
+columns = [
+    "head_neurons", "head_layers", "lr", "epochs",
+    "hys_score", "hys_mse", "hys_mape", "time"
+]
 
 info = pd.DataFrame(columns=columns)
 
@@ -168,37 +193,34 @@ for hn in head_neurons:
             print(f"\nTraining TL model — head {hn}x{hl}, lr={lr}\n")
 
             model = mixedModel(
-                input_dim_model2=input_dim,
+                input_dim_nabla=input_dim_nabla,  # 12
+                input_dim_V=INPUT_DIM_V,           # 9
                 output_dim=1,
-                transL_input_dim=input_dim,
                 transL_neurons=TRANS_NEURONS,
                 transL_layers=TRANS_LAYERS,
                 head_neurons=hn,
                 head_layers=hl
             )
 
-            # ===== CORREÇÃO CRÍTICA DO TRANSFER LEARNING =====
+            # 🔥 LOAD CORRETO DOS PESOS
             state = torch.load(TRANS_WEIGHTS, map_location="cpu")
 
+            # converte nomes: linear.X → net.X
             new_state = {}
             for k, v in state.items():
                 if k.startswith("linear."):
-                    new_state[k.replace("linear.", "net.")] = v
+                    new_key = k.replace("linear.", "net.")
+                    new_state[new_key] = v
 
             missing, unexpected = model.transL.load_state_dict(new_state, strict=False)
 
             print("Missing keys:", missing)
             print("Unexpected keys:", unexpected)
 
-            # permite fine-tuning (mais eficaz que congelar tudo)
-            for param in model.transL.parameters():
-                param.requires_grad = True
+            print("Missing keys:", missing)
+            print("Unexpected keys:", unexpected)
 
-            optimizer = torch.optim.Adam(
-                filter(lambda p: p.requires_grad, model.parameters()),
-                lr=lr
-            )
-
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
             loss_func = nn.MSELoss()
 
             for _ in range(epochs):
@@ -234,6 +256,5 @@ for hn in head_neurons:
             ]
 
             info = register_csv(contents, info)
-
 
 print("\n=== FIM ===")
