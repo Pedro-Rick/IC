@@ -102,17 +102,19 @@ class MotorDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
-    
+
+
 def register_csv(contents, info):
-    new_row = pd.DataFrame([contents], columns = info.columns)
+    new_row = pd.DataFrame([contents], columns=info.columns)
     info = pd.concat([info, new_row])
-    BASE_DIR = Path(__file__).resolve().parent
-    SAVE_PATH = BASE_DIR / ".." / "transL_results" / "motor_Nabla_Jou_TransL_info.csv"
+
+    SAVE_PATH = BASE_DIR / ".." / "transL_results"
+    SAVE_PATH.mkdir(parents=True, exist_ok=True)
+    SAVE_PATH = SAVE_PATH / "motor_Nabla_Hys_TransL_info.csv"
+
     info.to_csv(SAVE_PATH, index=False)
     return info
 
-columns = ['learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time'] 
-info = pd.DataFrame(columns = columns)
 
 # ======================
 # TRAIN SETUP
@@ -130,17 +132,18 @@ input_dim = train_data.drop(columns=target).shape[1]
 
 
 # ======================
-# TRANSFER SETTINGS (FIXOS)
+# TRANSFER SETTINGS
 # ======================
 
 TRANS_NEURONS = 200
 TRANS_LAYERS  = 2
 TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys_neurons200_layers2.pt"
 
+assert TRANS_WEIGHTS.exists(), f"Arquivo de pesos não encontrado: {TRANS_WEIGHTS}"
 
 
 # ======================
-# GRID (SÓ DO HEAD)
+# GRID (HEAD)
 # ======================
 
 head_neurons = [16, 32, 64]
@@ -152,8 +155,6 @@ columns = ['head_neurons', 'head_layers', 'lr', 'epochs',
            'hys_score', 'hys_mse', 'hys_mape', 'time']
 
 info = pd.DataFrame(columns=columns)
-
-
 
 
 # ======================
@@ -176,13 +177,22 @@ for hn in head_neurons:
                 head_layers=hl
             )
 
-            model.transL.load_state_dict(
-                torch.load(TRANS_WEIGHTS, map_location="cpu"),
-                strict=False
-            )
+            # ===== CORREÇÃO CRÍTICA DO TRANSFER LEARNING =====
+            state = torch.load(TRANS_WEIGHTS, map_location="cpu")
 
+            new_state = {}
+            for k, v in state.items():
+                if k.startswith("linear."):
+                    new_state[k.replace("linear.", "net.")] = v
+
+            missing, unexpected = model.transL.load_state_dict(new_state, strict=False)
+
+            print("Missing keys:", missing)
+            print("Unexpected keys:", unexpected)
+
+            # permite fine-tuning (mais eficaz que congelar tudo)
             for param in model.transL.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
 
             optimizer = torch.optim.Adam(
                 filter(lambda p: p.requires_grad, model.parameters()),
@@ -216,15 +226,13 @@ for hn in head_neurons:
 
             time = datetime.datetime.now()
 
-            info.loc[len(info)] = [
+            print(f"R2={hys_score:.4f} | MSE={hys_mse:.4e} | MAPE={hys_mape:.4f}")
+
+            contents = [
                 hn, hl, lr, epochs,
                 hys_score, hys_mse, hys_mape, time
             ]
 
-            print(f"R2={hys_score:.4f} | MSE={hys_mse:.4e} | MAPE={hys_mape:.4f}")
-
-            contents = [lr, epochs, hys_score, hys_mse, hys_mape, time]
-            
             info = register_csv(contents, info)
 
 
