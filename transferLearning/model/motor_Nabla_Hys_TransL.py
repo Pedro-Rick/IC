@@ -123,9 +123,9 @@ input_dim = train_data.drop(columns=target).shape[1]
 # TRANSFER SETTINGS (FIXOS)
 # ======================
 
-TRANS_NEURONS = 140
-TRANS_LAYERS  = 1
-TRANS_WEIGHTS = "pesos_V_Hys_neurons140_layers1.pt"
+TRANS_NEURONS = 200
+TRANS_LAYERS  = 2
+TRANS_WEIGHTS = "pesos_V_Hys_neurons200_layers2.pt"
 
 
 # ======================
