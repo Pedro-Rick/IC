@@ -173,7 +173,7 @@ for i in range(len(neurons)):
             
             info = register_csv(contents, info)
 
-SAVE_DIR = BASE_DIR.parent / ".." / "transferLearning" / "data_pesos"
+SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 SAVE_PATH = SAVE_DIR / f"pesos_V_Jou_neurons{best_neurons}_layers{best_layers}.pt"

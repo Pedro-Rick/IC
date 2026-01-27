@@ -83,9 +83,9 @@ def register_csv(contents, info):
 
 target = ['hysteresis']
 
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
-learning_rates = [0.1, 0.01]
+neurons = [10]
+layers = [1]
+learning_rates = [0.1]
 epochs = 5
 
 train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
@@ -168,7 +168,7 @@ for i in range(len(neurons)):
             
             info = register_csv(contents, info)
 
-SAVE_DIR = BASE_DIR.parent / ".." / "transferLearning" / "data_pesos"
+SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 SAVE_PATH = SAVE_DIR / f"pesos_V_Hys_neurons{best_neurons}_layers{best_layers}.pt"
