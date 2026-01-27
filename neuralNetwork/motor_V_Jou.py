@@ -104,6 +104,13 @@ test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
 columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'jou_score', 'jou_mse', 'jou_mape', 'time']
 info = pd.DataFrame(columns = columns)
 
+best_mape = float("inf")
+best_state_dict = None
+best_neurons = None
+best_layers = None
+best_lr = None
+
+
 for i in range(len(neurons)):
     for j in range(len(layers)):
         for k in range(len(learning_rates)):
@@ -155,16 +162,22 @@ for i in range(len(neurons)):
             print(f"\tSpecs:")
             print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
 
+            if jou_mape < best_mape:
+                best_mape = jou_mape
+                best_state_dict = model.state_dict()
+                best_neurons = neurons[i]
+                best_layers = layers[j]
+                best_lr = learning_rates[k]
+
             contents = [neurons[i], layers[j], learning_rates[k], epochs, jou_score, jou_mse, jou_mape, time] 
             
             info = register_csv(contents, info)
 
+SAVE_DIR = BASE_DIR.parent / ".." / "transferLearning" / "data_pesos"
+SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
+SAVE_PATH = SAVE_DIR / f"pesos_V_Jou_neurons{best_neurons}_layers{best_layers}.pt"
 
-SAVE_PATH = (BASE_DIR.parent / "transferLearning" / "data_pesos" / "data_pesos_V_Jou.pt")
+torch.save(best_state_dict, SAVE_PATH)
 
-SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-torch.save(model.state_dict(), SAVE_PATH)
-            
 print(f"the end")
