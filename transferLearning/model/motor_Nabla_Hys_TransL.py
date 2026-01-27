@@ -125,7 +125,8 @@ input_dim = train_data.drop(columns=target).shape[1]
 
 TRANS_NEURONS = 200
 TRANS_LAYERS  = 2
-TRANS_WEIGHTS = "pesos_V_Hys_neurons200_layers2.pt"
+TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys_neurons200_layers2.pt"
+
 
 
 # ======================
