@@ -102,7 +102,17 @@ class MotorDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+    
+def register_csv(contents, info):
+    new_row = pd.DataFrame([contents], columns = info.columns)
+    info = pd.concat([info, new_row])
+    BASE_DIR = Path(__file__).resolve().parent
+    SAVE_PATH = BASE_DIR / ".." / "transL_results" / "motor_Nabla_Jou_TransL_info.csv"
+    info.to_csv(SAVE_PATH, index=False)
+    return info
 
+columns = ['learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time'] 
+info = pd.DataFrame(columns = columns)
 
 # ======================
 # TRAIN SETUP
@@ -142,6 +152,8 @@ columns = ['head_neurons', 'head_layers', 'lr', 'epochs',
            'hys_score', 'hys_mse', 'hys_mape', 'time']
 
 info = pd.DataFrame(columns=columns)
+
+
 
 
 # ======================
@@ -210,6 +222,10 @@ for hn in head_neurons:
             ]
 
             print(f"R2={hys_score:.4f} | MSE={hys_mse:.4e} | MAPE={hys_mape:.4f}")
+
+            contents = [lr, epochs, hys_score, hys_mse, hys_mape, time]
+            
+            info = register_csv(contents, info)
 
 
 print("\n=== FIM ===")
