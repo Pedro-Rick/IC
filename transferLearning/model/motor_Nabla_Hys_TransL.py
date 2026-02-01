@@ -122,10 +122,22 @@ test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 input_dim_nabla = train_data.drop(columns=target).shape[1]  # 12
 INPUT_DIM_V     = 9
 
-TRANS_NEURONS = 200
-TRANS_LAYERS  = 2
-TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys_neurons200_layers2.pt"
+# buscando o arquivo
+pasta = Path(BASE_DIR / ".." / "data_pesos" )
+arquivo = next(pasta.glob("motor_V_Hys*"))
 
+# puxando os dados do arquivo
+nome_arq = arquivo.name
+
+TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / nome_arq
+
+#definindo a quantidade de neuronios e layers
+partes = nome_arq.split("_")
+
+TRANS_NEURONS = int(partes[3].replace("neurons", ""))
+TRANS_LAYERS  = int(partes[4].replace("layers", ""))
+
+ 
 assert TRANS_WEIGHTS.exists(), f"Arquivo de pesos não encontrado: {TRANS_WEIGHTS}"
 
 head_neurons = [16, 32, 64]

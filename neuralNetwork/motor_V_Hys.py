@@ -64,7 +64,8 @@ class RegressionModel(nn.Module):
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
-	@@ -70,109 +124,144 @@ def __init__(self, X, y):
+        self.X = torch.tensor(X.values, dtype=torch.float32)
+        self.y = torch.tensor(y.values, dtype=torch.float32)
     def __len__(self):
         return len(self.X)
 
