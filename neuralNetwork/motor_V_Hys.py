@@ -158,7 +158,7 @@ for i in range(len(neurons)):
 
             if hys_mape < best_mape:
                 best_mape = hys_mape
-                best_state_dict = model.state_dict()
+                best_state_dict = model.linear.state_dict()
                 best_neurons = neurons[i]
                 best_layers = layers[j]
                 best_lr = learning_rates[k]
@@ -167,6 +167,13 @@ for i in range(len(neurons)):
 
             info = register_csv(contents, info)
 
+#deletando o arquivo anterior
+pasta = Path(BASE_DIR.parent / "transferLearning" / "data_pesos" )
+arquivo = next(pasta.glob("motor_V_Hys*"))
+if os.path.exists(arquivo):
+    os.remove(arquivo)
+
+#salvando os pesos
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 

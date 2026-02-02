@@ -32,58 +32,60 @@ test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(co
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
-class transL(nn.Module):
-    def __init__(self, input_dim, neurons, layers):
-        super().__init__()
+class TansLRegressionModel(nn.Module):
 
-        modules = [nn.Linear(input_dim, neurons), nn.ReLU()]
-        for _ in range(layers):
-            modules += [nn.Linear(neurons, neurons), nn.ReLU()]
-
-        self.net = nn.Sequential(*modules)
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class mixedModel(nn.Module):
     def __init__(
         self,
-        input_dim_nabla,
-        input_dim_V,
+        input_dim,
         output_dim,
-        transL_neurons,
-        transL_layers,
-        head_neurons,
-        head_layers
+        pre_neurons,
+        pre_layers,
+        ft_neurons,
+        ft_layers,
+        peso_path
     ):
         super().__init__()
 
-        self.input_adapter = nn.Sequential(
-            nn.Linear(input_dim_nabla, input_dim_V),
-            nn.ReLU()
-        )
+        # bloco pre treinado
+        pre_modules = []
+        modules = []
 
-        self.transL = transL(
-            input_dim=input_dim_V,
-            neurons=transL_neurons,
-            layers=transL_layers
-        )
+        # primeira camada
+        pre_modules.append(nn.Linear(input_dim, pre_neurons))
+        pre_modules.append(nn.ReLU())
 
-        head_modules = []
-        in_dim = transL_neurons
-        for _ in range(head_layers):
-            head_modules += [nn.Linear(in_dim, head_neurons), nn.ReLU()]
-            in_dim = head_neurons
+        # camadas ocultas pré-treinadas
+        for _ in range(pre_layers):
+            pre_modules.append(nn.Linear(pre_neurons, pre_neurons))
+            pre_modules.append(nn.ReLU())
 
-        head_modules.append(nn.Linear(in_dim, output_dim))
-        self.head = nn.Sequential(*head_modules)
+        self.pretrained_block = nn.Sequential(*pre_modules)
+
+        # carregar pesos salvos
+        state = torch.load(peso_path, map_location="cpu")
+        self.pretrained_block.load_state_dict(state)
+
+        # fine tunning
+        modules.append(nn.Linear(pre_neurons, ft_neurons))
+        modules.append(nn.ReLU())
+
+        for i in range(ft_layers):
+            modules.append(nn.Linear(ft_neurons, ft_neurons))
+            modules.append(nn.ReLU())
+        
+        modules.append(nn.Linear(ft_neurons, output_dim))
+
+        self.finetune_block = nn.Sequential(*modules)
+
+        # congelar pré-treinado
+        for p in self.pretrained_block.parameters():
+            p.requires_grad = False
+
 
     def forward(self, x):
-        x = self.input_adapter(x)
-        x = self.transL(x)
-        return self.head(x)
-
+        x = self.pretrained_block(x)
+        x = self.finetune_block(x)
+        return x
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
@@ -129,88 +131,78 @@ arquivo = next(pasta.glob("motor_V_Hys*"))
 # puxando os dados do arquivo
 nome_arq = arquivo.name
 
-TRANS_WEIGHTS = BASE_DIR / ".." / "data_pesos" / nome_arq
-
 #definindo a quantidade de neuronios e layers
 partes = nome_arq.split("_")
 
 TRANS_NEURONS = int(partes[3].replace("neurons", ""))
 TRANS_LAYERS  = int(partes[4].replace("layers", ""))
 
- 
-assert TRANS_WEIGHTS.exists(), f"Arquivo de pesos não encontrado: {TRANS_WEIGHTS}"
-
-head_neurons = [16, 32, 64]
-head_layers  = [1, 2]
-learning_rates = [1e-3, 5e-4]
+#para finetuning
+ft_neurons = np.arange(10, 200 + 1, 10)
+ft_layers = [1, 2]
+ft_learning_rates = [0.1, 0.01]
 epochs = 100
 
-columns = [ "head_neurons", "head_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
+
+columns = [ "ft_neurons", "ft_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
 
 info = pd.DataFrame(columns=columns)
 
-for hn in head_neurons:
-    for hl in head_layers:
-        for lr in learning_rates:
+for i in range(len(ft_neurons)):
+    for j in range(len(ft_layers)):
+        for k in range(len(ft_learning_rates)):
 
-            print(f"\nTraining TL model — head {hn}x{hl}, lr={lr}\n")
+            print(f"\nTraining model --- {ft_neurons[i]}-{ft_layers[j]}-{ft_learning_rates[k]}-{epochs}\n")
 
-            model = mixedModel(
-                input_dim_nabla=input_dim_nabla,  # 12
-                input_dim_V=INPUT_DIM_V,           # 9
+            model = TansLRegressionModel(
+                input_dim= len(train_data.columns.drop(target)),
                 output_dim=1,
-                transL_neurons=TRANS_NEURONS,
-                transL_layers=TRANS_LAYERS,
-                head_neurons=hn,
-                head_layers=hl
+                pre_neurons=TRANS_NEURONS,
+                pre_layers=TRANS_LAYERS,
+                ft_neurons=ft_neurons[i],
+                ft_layers=ft_layers[j],
+                peso_path= arquivo 
             )
 
-            # LOAD DOS PESOS
-            state = torch.load(TRANS_WEIGHTS, map_location="cpu")
-
-            # converte nomes linear.X → net.X
-            new_state = {}
-            for k, v in state.items():
-                if k.startswith("linear."):
-                    new_key = k.replace("linear.", "net.")
-                    new_state[new_key] = v
-
-            missing, unexpected = model.transL.load_state_dict(new_state, strict=False)
-
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
             loss_func = nn.MSELoss()
+            optimizer = torch.optim.SGD(model.parameters(), lr = ft_learning_rates[k])
+             
+            losses = torch.zeros(epochs)
 
-            for _ in range(epochs):
+            for a in range(epochs):
                 model.train()
                 for X, y in train_loader:
-                    optimizer.zero_grad()
-                    loss = loss_func(model(X), y)
+                    pred_train = model(X)
+                    loss = loss_func(pred_train, y)
+
                     loss.backward()
                     optimizer.step()
+                    optimizer.zero_grad()
+            
+            time = datetime.datetime.now()
+
+            y_pred_list = []
+            y_test_list = []
 
             model.eval()
-            y_pred, y_true = [], []
 
             with torch.no_grad():
                 for X, y in test_loader:
-                    y_pred.append(model(X))
-                    y_true.append(y)
+                    pred_test = model(X)
+                    y_pred_list.append(pred_test)
+                    y_test_list.append(y)
 
-            y_pred = torch.cat(y_pred)
-            y_true = torch.cat(y_true)
+            y_pred = torch.cat(y_pred_list)
+            y_test = torch.cat(y_test_list)
 
-            hys_score = r2_score(y_true.numpy(), y_pred.numpy())
-            hys_mse   = mean_squared_error(y_true.numpy(), y_pred.numpy())
-            hys_mape  = mean_absolute_percentage_error(y_true.numpy(), y_pred.numpy())
+            hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+            hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
-            time = datetime.datetime.now()
 
             print(f"R2={hys_score:.4f} | MSE={hys_mse:.4e} | MAPE={hys_mape:.4f}")
 
-            contents = [
-                hn, hl, lr, epochs,
-                hys_score, hys_mse, hys_mape, time
-            ]
+            contents = [ft_neurons[i], ft_layers[j], ft_learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
 
             info = register_csv(contents, info)
 
