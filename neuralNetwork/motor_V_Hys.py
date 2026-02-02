@@ -168,12 +168,6 @@ for i in range(len(neurons)):
 
             info = register_csv(contents, info)
 
-#deletando o arquivo anterior
-pasta = Path(BASE_DIR.parent / "transferLearning" / "data_pesos" )
-arquivo = next(pasta.glob("pesos_V_Hys*"))
-if os.path.exists(arquivo):
-    os.remove(arquivo)
-
 #salvando os pesos, camadas e neuronios
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
