@@ -10,6 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
 MOTOR = "Nabla"
+MOTOR_TL = "V"
+var = "Hys"
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
@@ -49,11 +51,18 @@ class TransLRegressionModel(nn.Module):
         )
 
         #ADAPTER
-        self.adapter = nn.Linear(input_dim, pre_input_dim)
+        self.adapter = nn.Sequential(
+            nn.Linear(input_dim, pre_input_dim),
+            nn.ReLU()
+        )
 
         # congelar pré
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
+        
+        # liberar última camada linear do backbone
+        for p in self.pretrained_block[-1].parameters():
+            p.requires_grad = True
 
         # descobrir saída do pré automaticamente
         last_linear = [m for m in self.pretrained_block if isinstance(m, nn.Linear)][-1]
@@ -90,14 +99,13 @@ class MotorDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns=info.columns)
     info = pd.concat([info, new_row])
 
     SAVE_PATH = BASE_DIR / ".." / "transL_results"
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
-    SAVE_PATH = SAVE_PATH / "motor_Nabla_Hys_TransL_info.csv"
+    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TransL_info.csv"
 
     info.to_csv(SAVE_PATH, index=False)
     return info
@@ -113,14 +121,14 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # buscando o arquivo
-arquivo = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys.pt"
+arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_Hys.pt"
 
 #para finetuning
 
 ft_neurons = np.arange(10, 200 + 1, 10)
 ft_layers = [1, 2]
-ft_learning_rates = [0.1, 0.01]
-epochs = 100
+ft_learning_rates = [1e-3, 5e-4, 1e-4]
+epochs = 300
 
 columns = [ "ft_neurons", "ft_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
 
@@ -141,8 +149,8 @@ for i in range(len(ft_neurons)):
             )
 
             loss_func = nn.MSELoss()
-            optimizer = torch.optim.Adam(model.parameters(), lr = ft_learning_rates[k])
-             
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[k])
+
             for a in range(epochs):
                 model.train()
                 for X, y in train_loader:
