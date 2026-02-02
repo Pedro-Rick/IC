@@ -37,7 +37,7 @@ class TransLRegressionModel(nn.Module):
         super().__init__()
 
         # carregar modelo completo salvo
-        full_model = torch.load(peso_path, map_location="cpu")
+        full_model = torch.load(peso_path,map_location="cpu",weights_only=False)
 
         # pegar input_dim que o modelo V espera
         first_linear = full_model[0]
