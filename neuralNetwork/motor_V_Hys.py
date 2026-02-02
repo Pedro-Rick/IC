@@ -82,10 +82,16 @@ def register_csv(contents, info):
 
 target = ['hysteresis']
 
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
-learning_rates = [0.1, 0.01]
+#neurons = np.arange(10, 200 + 1, 10)
+#layers = [1, 2]
+#learning_rates = [0.1, 0.01]
+#epochs = 100
+
+neurons = np.arange(10, 20 + 1, 10)
+layers = [1]
+learning_rates = [0.1]
 epochs = 100
+
 
 train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
 test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
@@ -169,7 +175,7 @@ for i in range(len(neurons)):
 
 #deletando o arquivo anterior
 pasta = Path(BASE_DIR.parent / "transferLearning" / "data_pesos" )
-arquivo = next(pasta.glob("motor_V_Hys*"))
+arquivo = next(pasta.glob("pesos_V_Hys*"))
 if os.path.exists(arquivo):
     os.remove(arquivo)
 
@@ -178,7 +184,6 @@ SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 SAVE_PATH = SAVE_DIR / f"pesos_V_Hys_neurons{best_neurons}_layers{best_layers}.pt"
-
 torch.save(best_state_dict, SAVE_PATH)
 
 print(f"the end")
