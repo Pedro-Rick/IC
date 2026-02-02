@@ -140,14 +140,9 @@ TRANS_LAYERS  = int(partes[4].replace("layers", ""))
 
 #para finetuning
 
-#ft_neurons = np.arange(10, 200 + 1, 10)
-#ft_layers = [1, 2]
-#ft_learning_rates = [0.1, 0.01]
-#epochs = 100
-
-ft_neurons = np.arange(10, 20 + 1, 10)
-ft_layers = [1]
-ft_learning_rates = [0.1]
+ft_neurons = np.arange(10, 200 + 1, 10)
+ft_layers = [1, 2]
+ft_learning_rates = [0.1, 0.01]
 epochs = 100
 
 columns = [ "ft_neurons", "ft_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]

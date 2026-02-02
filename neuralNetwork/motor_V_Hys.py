@@ -82,14 +82,9 @@ def register_csv(contents, info):
 
 target = ['hysteresis']
 
-#neurons = np.arange(10, 200 + 1, 10)
-#layers = [1, 2]
-#learning_rates = [0.1, 0.01]
-#epochs = 100
-
-neurons = np.arange(10, 20 + 1, 10)
-layers = [1]
-learning_rates = [0.1]
+neurons = np.arange(10, 200 + 1, 10)
+layers = [1, 2]
+learning_rates = [0.1, 0.01]
 epochs = 100
 
 
