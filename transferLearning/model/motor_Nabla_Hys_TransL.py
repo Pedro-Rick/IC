@@ -31,18 +31,25 @@ test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(co
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
-class TansLRegressionModel(nn.Module):
+class TransLRegressionModel(nn.Module):
 
-    def __init__(self, output_dim, ft_neurons, ft_layers, peso_path):
+    def __init__(self, input_dim, output_dim, ft_neurons, ft_layers, peso_path):
         super().__init__()
 
         # carregar modelo completo salvo
         full_model = torch.load(peso_path, map_location="cpu")
 
+        # pegar input_dim que o modelo V espera
+        first_linear = full_model[0]
+        pre_input_dim = first_linear.in_features
+
         # remover última camada
         self.pretrained_block = nn.Sequential(
             *list(full_model.children())[:-1]
         )
+
+        #ADAPTER
+        self.adapter = nn.Linear(input_dim, pre_input_dim)
 
         # congelar pré
         for p in self.pretrained_block.parameters():
@@ -66,6 +73,7 @@ class TansLRegressionModel(nn.Module):
         self.finetune_block = nn.Sequential(*ft_modules)
 
     def forward(self, x):
+        x = self.adapter(x)
         x = self.pretrained_block(x)
         x = self.finetune_block(x)
         return x
@@ -105,7 +113,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # buscando o arquivo
-arquivo = Path(BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys")
+arquivo = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys"
 
 #para finetuning
 
@@ -124,7 +132,8 @@ for i in range(len(ft_neurons)):
 
             print(f"\nTraining model --- {ft_neurons[i]}-{ft_layers[j]}-{ft_learning_rates[k]}-{epochs}\n")
 
-            model = TansLRegressionModel(
+            model = TransLRegressionModel(
+                input_dim = len(train_data.columns.drop(target)),
                 output_dim=1,
                 ft_neurons=ft_neurons[i],
                 ft_layers=ft_layers[j],
@@ -132,7 +141,7 @@ for i in range(len(ft_neurons)):
             )
 
             loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = ft_learning_rates[k])
+            optimizer = torch.optim.Adam(model.parameters(), lr = ft_learning_rates[k])
              
             for a in range(epochs):
                 model.train()
