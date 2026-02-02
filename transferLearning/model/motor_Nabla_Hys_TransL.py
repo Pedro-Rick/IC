@@ -120,16 +120,17 @@ test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# Dimensiona corretamente
-input_dim_nabla = train_data.drop(columns=target).shape[1]  # 12
-INPUT_DIM_V     = 9
-
 # buscando o arquivo
 pasta = Path(BASE_DIR / ".." / "data_pesos" )
-arquivo = next(pasta.glob("motor_V_Hys*"))
+arquivo = next(pasta.glob("pesos_V_Hys*"))
 
 # puxando os dados do arquivo
-nome_arq = arquivo.name
+nome_arq = arquivo.stem
+
+print("")
+print(arquivo)
+print(nome_arq)
+print("")
 
 #definindo a quantidade de neuronios e layers
 partes = nome_arq.split("_")
@@ -138,11 +139,16 @@ TRANS_NEURONS = int(partes[3].replace("neurons", ""))
 TRANS_LAYERS  = int(partes[4].replace("layers", ""))
 
 #para finetuning
-ft_neurons = np.arange(10, 200 + 1, 10)
-ft_layers = [1, 2]
-ft_learning_rates = [0.1, 0.01]
-epochs = 100
 
+#ft_neurons = np.arange(10, 200 + 1, 10)
+#ft_layers = [1, 2]
+#ft_learning_rates = [0.1, 0.01]
+#epochs = 100
+
+ft_neurons = np.arange(10, 20 + 1, 10)
+ft_layers = [1]
+ft_learning_rates = [0.1]
+epochs = 100
 
 columns = [ "ft_neurons", "ft_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
 
