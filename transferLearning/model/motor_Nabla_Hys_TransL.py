@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import datetime
 from pathlib import Path
 
@@ -34,58 +33,43 @@ test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
 class TansLRegressionModel(nn.Module):
 
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        pre_neurons,
-        pre_layers,
-        ft_neurons,
-        ft_layers,
-        peso_path
-    ):
+    def __init__(self, output_dim, ft_neurons, ft_layers, peso_path):
         super().__init__()
 
-        # bloco pre treinado
-        pre_modules = []
-        modules = []
+        # carregar modelo completo salvo
+        full_model = torch.load(peso_path, map_location="cpu")
 
-        # primeira camada
-        pre_modules.append(nn.Linear(input_dim, pre_neurons))
-        pre_modules.append(nn.ReLU())
+        # remover última camada
+        self.pretrained_block = nn.Sequential(
+            *list(full_model.children())[:-1]
+        )
 
-        # camadas ocultas pré-treinadas
-        for _ in range(pre_layers):
-            pre_modules.append(nn.Linear(pre_neurons, pre_neurons))
-            pre_modules.append(nn.ReLU())
-
-        self.pretrained_block = nn.Sequential(*pre_modules)
-
-        # carregar pesos salvos
-        state = torch.load(peso_path, map_location="cpu")
-        self.pretrained_block.load_state_dict(state)
-
-        # fine tunning
-        modules.append(nn.Linear(pre_neurons, ft_neurons))
-        modules.append(nn.ReLU())
-
-        for i in range(ft_layers):
-            modules.append(nn.Linear(ft_neurons, ft_neurons))
-            modules.append(nn.ReLU())
-        
-        modules.append(nn.Linear(ft_neurons, output_dim))
-
-        self.finetune_block = nn.Sequential(*modules)
-
-        # congelar pré-treinado
+        # congelar pré
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
 
+        # descobrir saída do pré automaticamente
+        last_linear = [m for m in self.pretrained_block if isinstance(m, nn.Linear)][-1]
+        pre_out_dim = last_linear.out_features
+
+        # fine tuning
+        ft_modules = []
+        ft_modules.append(nn.Linear(pre_out_dim, ft_neurons))
+        ft_modules.append(nn.ReLU())
+
+        for _ in range(ft_layers):
+            ft_modules.append(nn.Linear(ft_neurons, ft_neurons))
+            ft_modules.append(nn.ReLU())
+
+        ft_modules.append(nn.Linear(ft_neurons, output_dim))
+
+        self.finetune_block = nn.Sequential(*ft_modules)
 
     def forward(self, x):
         x = self.pretrained_block(x)
         x = self.finetune_block(x)
         return x
+
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
@@ -121,22 +105,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # buscando o arquivo
-pasta = Path(BASE_DIR / ".." / "data_pesos" )
-arquivo = next(pasta.glob("pesos_V_Hys*"))
-
-# puxando os dados do arquivo
-nome_arq = arquivo.stem
-
-print("")
-print(arquivo)
-print(nome_arq)
-print("")
-
-#definindo a quantidade de neuronios e layers
-partes = nome_arq.split("_")
-
-TRANS_NEURONS = int(partes[3].replace("neurons", ""))
-TRANS_LAYERS  = int(partes[4].replace("layers", ""))
+arquivo = Path(BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys")
 
 #para finetuning
 
@@ -156,10 +125,7 @@ for i in range(len(ft_neurons)):
             print(f"\nTraining model --- {ft_neurons[i]}-{ft_layers[j]}-{ft_learning_rates[k]}-{epochs}\n")
 
             model = TansLRegressionModel(
-                input_dim= len(train_data.columns.drop(target)),
                 output_dim=1,
-                pre_neurons=TRANS_NEURONS,
-                pre_layers=TRANS_LAYERS,
                 ft_neurons=ft_neurons[i],
                 ft_layers=ft_layers[j],
                 peso_path= arquivo 
@@ -168,8 +134,6 @@ for i in range(len(ft_neurons)):
             loss_func = nn.MSELoss()
             optimizer = torch.optim.SGD(model.parameters(), lr = ft_learning_rates[k])
              
-            losses = torch.zeros(epochs)
-
             for a in range(epochs):
                 model.train()
                 for X, y in train_loader:

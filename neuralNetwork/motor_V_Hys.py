@@ -174,11 +174,11 @@ arquivo = next(pasta.glob("pesos_V_Hys*"))
 if os.path.exists(arquivo):
     os.remove(arquivo)
 
-#salvando os pesos
+#salvando os pesos, camadas e neuronios
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-SAVE_PATH = SAVE_DIR / f"pesos_V_Hys_neurons{best_neurons}_layers{best_layers}.pt"
+SAVE_PATH = SAVE_DIR / f"pesos_V_Hys.pt"
 torch.save(best_state_dict, SAVE_PATH)
 
 print(f"the end")
