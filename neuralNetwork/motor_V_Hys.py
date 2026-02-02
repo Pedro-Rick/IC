@@ -159,10 +159,8 @@ for i in range(len(neurons)):
 
             if hys_mape < best_mape:
                 best_mape = hys_mape
-                best_state_dict = model.linear.state_dict()
-                best_neurons = neurons[i]
-                best_layers = layers[j]
-                best_lr = learning_rates[k]
+                best_model_block = model.linear
+
 
             contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
 
@@ -173,6 +171,6 @@ SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 SAVE_PATH = SAVE_DIR / f"pesos_V_Hys.pt"
-torch.save(best_state_dict, SAVE_PATH)
+torch.save(best_model_block, SAVE_PATH)
 
 print(f"the end")

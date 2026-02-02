@@ -113,7 +113,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # buscando o arquivo
-arquivo = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys"
+arquivo = BASE_DIR / ".." / "data_pesos" / "pesos_V_Hys.pt"
 
 #para finetuning
 
