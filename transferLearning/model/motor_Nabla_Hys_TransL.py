@@ -127,8 +127,8 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_Hys.pt"
 
 ft_neurons = np.arange(10, 200 + 1, 10)
 ft_layers = [1, 2]
-ft_learning_rates = [1e-3, 5e-4, 1e-4]
-epochs = 300
+ft_learning_rates = [1e-3, 5e-4]
+epochs = 100
 
 columns = [ "ft_neurons", "ft_layers", "lr", "epochs", "hys_score", "hys_mse", "hys_mape", "time"]
 

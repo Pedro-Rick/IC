@@ -1,69 +1,80 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 import datetime
-import csv
-import os
+from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils import data
-from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSampler
+from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-# data loading
-
-from pathlib import Path
-import pandas as pd
-
 MOTOR = "Nabla"
+MOTOR_TL = "V"
+var = "jou"
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
+
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
 train_data = pd.DataFrame()
-
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
-train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
-
+train_data["joule"] = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
 
 test_data = pd.DataFrame()
-
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
-test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
+test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
+class TransLRegressionModel(nn.Module):
 
-
-class RegressionModel(nn.Module):
-    
-    def __init__(self, input_dim, output_dim, neurons = 5, layers = 1):
+    def __init__(self, input_dim, peso_path):
         super().__init__()
 
-        modules = []
-        
-        modules.append(nn.Linear(input_dim, neurons))
-        modules.append(nn.ReLU())
-        for i in range(layers):
-            modules.append(nn.Linear(neurons, neurons))
-            modules.append(nn.ReLU())
-        modules.append(nn.Linear(neurons, output_dim))
-        
-        self.linear = nn.Sequential(*modules)
-        
+        # carregar modelo completo salvo
+        full_model = torch.load(
+            peso_path,
+            map_location="cpu",
+            weights_only=False
+        )
+
+        # backbone pré-treinado
+        self.pretrained_block = full_model
+
+        # input esperado pelo modelo V
+        first_linear = self.pretrained_block[0]
+        pre_input_dim = first_linear.in_features
+
+        # adapter das entradas
+        self.adapter = nn.Sequential(
+            nn.Linear(input_dim, pre_input_dim),
+            nn.ReLU()
+        )
+
+        # CONGELA TUDO
+        for p in self.pretrained_block.parameters():
+            p.requires_grad = False
+
+        # LIBERA ÚLTIMAS 2 CAMADAS
+        layers = list(self.pretrained_block.children())
+
+        for layer in layers[-2:]:
+            for p in layer.parameters():
+                p.requires_grad = True
     def forward(self, x):
-        x = self.linear(x)
+        x = self.adapter(x)
+        x = self.pretrained_block(x)
         return x
+
+
+
 
 class MotorDataset(Dataset):
     def __init__(self, X, y):
@@ -73,96 +84,90 @@ class MotorDataset(Dataset):
     def __len__(self):
         return len(self.X)
 
-    def __getitem__(self, index):
-        return self.X[index], self.y[index]
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
 
 def register_csv(contents, info):
-    new_row = pd.DataFrame([contents], columns = info.columns)
+    new_row = pd.DataFrame([contents], columns=info.columns)
     info = pd.concat([info, new_row])
-    BASE_DIR = Path(__file__).resolve().parent
-    SAVE_PATH = BASE_DIR / ".." / "transL_results" / "motor_Nabla_Jou_TransL_info.csv"
+
+    SAVE_PATH = BASE_DIR / ".." / "transL_results"
+    SAVE_PATH.mkdir(parents=True, exist_ok=True)
+    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TransL_info.csv"
+
     info.to_csv(SAVE_PATH, index=False)
     return info
 
-target = ['joule']
-
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
-learning_rates = [0.1, 0.01]
-epochs = 100
-
-train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
-test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
+target = ["joule"]
 
 BATCH_SIZE = 256
 
-train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
-test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
+train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
+test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'jou_score', 'jou_mse', 'jou_mape', 'time'] 
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-info = pd.DataFrame(columns = columns)
+# buscando o arquivo
+arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 
-for i in range(len(neurons)):
-    for j in range(len(layers)):
-        for k in range(len(learning_rates)):
-            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
-            
-            input_dim = len(train_data.columns.drop(target))
-            
-            output_dim = 1
-            
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
-            
-            loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
+#para finetuning
 
-            for a in range(epochs):
-                model.train()
-                for X, y in train_loader:
-                    pred_train = model(X)
-                    loss = loss_func(pred_train, y)
-                    
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
-            
-            time = datetime.datetime.now()
+ft_learning_rates = [1e-3, 5e-4]
+epochs = 300
 
-            print(f"\tFinished training model at {time}.\n")
+columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 
-            y_pred_list = []
-            y_test_list = []
-
-            model.eval()
-
-            with torch.no_grad():
-                for X, y in test_loader:
-                    pred_test = model(X)
-                    y_pred_list.append(pred_test)
-                    y_test_list.append(y)
-            
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
-
-            jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-            jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-            jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
-
-            print(f"\tSpecs:")
-            print(f"\t\tjou_score: {jou_score}, jou_mse: {jou_mse}, jou_mape: {jou_mape}.\n\n")
-
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, jou_score, jou_mse, jou_mape, time]
-            
-            info = register_csv(contents, info)
-
-for i, layer in enumerate(model.linear):
-    if isinstance(layer, nn.Linear):
-        print(f"\nCamada Linear {i}")
-        print("Pesos (weight):")
-        print(layer.weight)
-        print("Bias:")
-        print(layer.bias)
+info = pd.DataFrame(columns=columns)
 
 
-print(f"the end")
+for k in range(len(ft_learning_rates)):
+
+    print(f"\nTraining model --- {ft_learning_rates[k]}-{epochs}\n")
+
+    model = TransLRegressionModel(
+        input_dim = len(train_data.columns.drop(target)),
+        peso_path= arquivo 
+    )
+
+    loss_func = nn.MSELoss()
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[k])
+
+    for a in range(epochs):
+        model.train()
+        for X, y in train_loader:
+            pred_train = model(X)
+            loss = loss_func(pred_train, y)
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+    
+    time = datetime.datetime.now()
+
+    y_pred_list = []
+    y_test_list = []
+
+    model.eval()
+
+    with torch.no_grad():
+        for X, y in test_loader:
+            pred_test = model(X)
+            y_pred_list.append(pred_test)
+            y_test_list.append(y)
+
+    y_pred = torch.cat(y_pred_list)
+    y_test = torch.cat(y_test_list)
+
+    Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+    Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+    Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+
+
+    print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
+
+    contents = [ft_learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, time]
+
+    info = register_csv(contents, info)
+
+print("\nFIM")

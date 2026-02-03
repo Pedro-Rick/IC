@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSam
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
 MOTOR = "V"
+var = "Hys"
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -76,7 +77,7 @@ def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
     BASE_DIR = Path(__file__).resolve().parent
-    SAVE_PATH = BASE_DIR / ".." / "results_patu" / "V" / "motor_V_Hys_info.csv"
+    SAVE_PATH = BASE_DIR / ".." / "results_patu" / "V" / f"motor_{MOTOR}_{var}_info.csv"
     info.to_csv(SAVE_PATH, index=False)
     return info
 
@@ -96,7 +97,7 @@ BATCH_SIZE = 256
 train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
 test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', 'hys_score', 'hys_mse', 'hys_mape', 'time'] 
+columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_mape', 'time'] 
 info = pd.DataFrame(columns = columns)
 
 best_mape = float("inf")
@@ -170,7 +171,7 @@ for i in range(len(neurons)):
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-SAVE_PATH = SAVE_DIR / f"pesos_V_Hys.pt"
+SAVE_PATH = SAVE_DIR / f"pesos_V_{var}.pt"
 torch.save(best_model_block, SAVE_PATH)
 
 print(f"the end")
