@@ -124,7 +124,7 @@ info = pd.DataFrame(columns=columns)
 
 for i in range(len(ft_learning_rates)):
 
-    print(f"\nTraining model --- {ft_learning_rates[k]}-{epochs}\n")
+    print(f"\nTraining model --- {ft_learning_rates[i]}-{epochs}\n")
 
     model = TransLRegressionModel(
         input_dim = len(train_data.columns.drop(target)),
