@@ -11,7 +11,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 
 MOTOR = "Nabla"
 MOTOR_TL = "V"
-var = "jou"
+var = "Jou"
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
@@ -122,7 +122,7 @@ columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 info = pd.DataFrame(columns=columns)
 
 
-for k in range(len(ft_learning_rates)):
+for i in range(len(ft_learning_rates)):
 
     print(f"\nTraining model --- {ft_learning_rates[k]}-{epochs}\n")
 
@@ -132,7 +132,7 @@ for k in range(len(ft_learning_rates)):
     )
 
     loss_func = nn.MSELoss()
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[k])
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
 
     for a in range(epochs):
         model.train()
@@ -167,7 +167,7 @@ for k in range(len(ft_learning_rates)):
 
     print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
-    contents = [ft_learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, time]
+    contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
     info = register_csv(contents, info)
 
