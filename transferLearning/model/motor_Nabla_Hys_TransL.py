@@ -59,10 +59,6 @@ class TransLRegressionModel(nn.Module):
         # congelar pré
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
-        
-        # liberar última camada linear do backbone
-        for p in self.pretrained_block[-1].parameters():
-            p.requires_grad = True
 
         # descobrir saída do pré automaticamente
         last_linear = [m for m in self.pretrained_block if isinstance(m, nn.Linear)][-1]
