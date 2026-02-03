@@ -166,7 +166,7 @@ for i in range(len(neurons)):
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-SAVE_PATH = SAVE_DIR / f"pesos_V_{var}.pt"
+SAVE_PATH = SAVE_DIR / f"pesos_{var}_{var}.pt"
 torch.save(best_model_block, SAVE_PATH)
 
 print(f"the end")
