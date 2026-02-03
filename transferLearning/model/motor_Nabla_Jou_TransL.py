@@ -114,7 +114,8 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 #para finetuning
 
 ft_learning_rates = [1e-3, 5e-4]
-epochs = 300
+# ft_learning_rates = [1e-3]
+epochs = 100
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 
