@@ -9,10 +9,10 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "Nabla"
+MOTOR = "V"
 MOTOR_TL = "2D"
-var = "Jou"
-target = ["joule"]
+var = "Hys"
+target = ["hysteresis"]
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR

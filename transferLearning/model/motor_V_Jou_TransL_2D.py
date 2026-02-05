@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "Nabla"
+MOTOR = "v"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
