@@ -12,6 +12,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 MOTOR = "Nabla"
 MOTOR_TL = "V"
 var = "Hys"
+target = ["hysteresis"]
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
@@ -101,12 +102,10 @@ def register_csv(contents, info):
 
     SAVE_PATH = BASE_DIR / ".." / "transL_results"
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
-    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TransL_info.csv"
+    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TransL_{MOTOR_TL}_info.csv"
 
     info.to_csv(SAVE_PATH, index=False)
     return info
-
-target = ["hysteresis"]
 
 BATCH_SIZE = 256
 
@@ -117,7 +116,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # buscando o arquivo
-arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_Hys.pt"
+arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 
 #para finetuning
 
