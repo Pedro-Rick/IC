@@ -206,7 +206,7 @@ for i in range(len(neurons)):
 
 curve_df = pd.DataFrame(curve_results)
 
-SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "grafico" / f"curve_baseline_MAPE_{MOTOR}_{var}.csv"
+SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_MAPE_{MOTOR}_{var}.csv"
 curve_df.to_csv(SAVE_CURVE, index=False)
 
 print("\nCurva salva em:", SAVE_CURVE)
