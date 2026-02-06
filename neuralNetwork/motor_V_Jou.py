@@ -1,19 +1,17 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
-
 import datetime
-import csv
-import os
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils import data
 from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSampler
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
+
+torch.manual_seed(42)
+np.random.seed(42)
 
 MOTOR = "V"
 var = "Jou"
@@ -67,6 +65,7 @@ class MotorDataset(Dataset):
     def __init__(self, X, y):
         self.X = torch.tensor(X.values, dtype=torch.float32)
         self.y = torch.tensor(y.values, dtype=torch.float32)
+
     def __len__(self):
         return len(self.X)
 
@@ -88,23 +87,46 @@ layers = [1, 2]
 learning_rates = [0.1, 0.01]
 epochs = 100
 
+BATCH_SIZE = 256
 
 train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
 test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
 
-BATCH_SIZE = 256
-
-train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
 test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
 
 columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_mape', 'time'] 
 info = pd.DataFrame(columns = columns)
 
+# definindo as variaveis do melhor mape
 best_mape = float("inf")
 best_state_dict = None
 best_neurons = None
 best_layers = None
 best_lr = None
+
+# definindo a variaveis do grafico
+fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
+curve_results = []
+
+full_indices = np.arange(len(train_dataset))
+
+
+for frac in fractions:
+
+    print(f"\n==============================")
+    print(f"FRACTION = {frac}")
+    print(f"==============================")
+
+    subset_size = int(len(train_dataset) * frac)
+    subset_idx = np.random.choice(full_indices, subset_size, replace=False)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        sampler=SubsetRandomSampler(subset_idx)
+    )
+
+    best_mape_frac = float("inf")
 
 
 for i in range(len(neurons)):
@@ -166,6 +188,42 @@ for i in range(len(neurons)):
             contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
             info = register_csv(contents, info)
+
+ # =========================
+    # salva melhor da fração
+    # =========================
+
+    curve_results.append({
+        "fraction": frac,
+        "best_mape": best_mape_frac
+    })
+
+    print(f"\n>>> BEST MAPE FRACTION {frac} = {best_mape}")
+
+# =========================
+# SALVA CURVA
+# =========================
+
+curve_df = pd.DataFrame(curve_results)
+
+SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "grafico" / f"curve_baseline_MAPE_{MOTOR}_{var}.csv"
+curve_df.to_csv(SAVE_CURVE, index=False)
+
+print("\nCurva salva em:", SAVE_CURVE)
+
+# =========================
+# PLOT
+# =========================
+
+import matplotlib.pyplot as plt
+
+plt.figure()
+plt.plot(curve_df["fraction"], curve_df["best_mape"], marker='o')
+plt.xscale("log")
+plt.xlabel("Fração dos dados de treino")
+plt.ylabel("Melhor MAPE")
+plt.title("Baseline — MAPE vs Dados")
+plt.grid(True)
 
 #salvando os pesos, camadas e neuronios
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"

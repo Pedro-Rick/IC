@@ -159,14 +159,14 @@ for i in range(len(ft_learning_rates)):
     y_pred = torch.cat(y_pred_list)
     y_test = torch.cat(y_test_list)
 
-    Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-    Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-    Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+    Hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+    Hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+    Hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
 
-    print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
+    print(f"R2={Hys_score:.4f} | MSE={Hys_mse:.4e} | MAPE={Hys_mape:.4f}")
 
-    contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
+    contents = [ft_learning_rates[i], epochs, Hys_score, Hys_mse, Hys_mape, time]
 
     info = register_csv(contents, info)
 

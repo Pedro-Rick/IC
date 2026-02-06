@@ -2,10 +2,12 @@ import numpy as np
 import pandas as pd
 import datetime
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import SubsetRandomSampler
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
@@ -113,13 +115,34 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 #para finetuning
 
 ft_learning_rates = [1e-3, 5e-4]
-# ft_learning_rates = [1e-3]
 epochs = 100
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 
 info = pd.DataFrame(columns=columns)
 
+# definindo a variaveis do grafico
+fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
+curve_results = []
+
+full_indices = np.arange(len(train_dataset))
+
+for frac in fractions:
+
+    print("\n====================")
+    print("FRACTION =", frac)
+    print("====================")
+
+    subset_size = int(len(train_dataset) * frac)
+    subset_idx = np.random.choice(full_indices, subset_size, replace=False)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        sampler=SubsetRandomSampler(subset_idx)
+    )
+
+    best_mape_frac = float("inf")
 
 for i in range(len(ft_learning_rates)):
 
@@ -169,5 +192,52 @@ for i in range(len(ft_learning_rates)):
     contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
     info = register_csv(contents, info)
+
+    if Jou_mape < best_mape_frac:
+        best_mape_frac = Jou_mape
+
+# salvando a curva de resultados
+curve_results.append({
+    "fraction": frac,
+    "best_mape": best_mape_frac
+})
+
+print("BEST TL MAPE =", best_mape_frac)
+
+curve_df = pd.DataFrame(curve_results)
+
+curve_path = BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
+curve_df.to_csv(curve_path, index=False)
+
+print("Curva TL salva em:", curve_path)
+
+baseline_path = BASE_DIR / "transferLearning" / "tranL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+base_df = pd.read_csv(baseline_path)
+
+plt.figure()
+
+plt.plot(
+    base_df["fraction"],
+    base_df["best_mape"],
+    'o-',
+    label="Baseline"
+)
+
+plt.plot(
+    curve_df["fraction"],
+    curve_df["best_mape"],
+    's--',
+    label="Transfer Learning"
+)
+
+plt.xscale("log")
+plt.xlabel("Fração dos dados de treino")
+plt.ylabel("Melhor MAPE")
+plt.title(f"{MOTOR} — Baseline vs TL")
+plt.legend()
+plt.grid(True)
+
+plt.savefig(BASE_DIR / f"compare_TL_vs_base_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
+plt.show()
 
 print("\nFIM")
