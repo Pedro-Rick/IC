@@ -110,6 +110,13 @@ curve_results = []
 
 full_indices = np.arange(len(train_dataset))
 
+best_mape = float("inf")
+best_model_block = None
+
+fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
+curve_results = []
+
+full_indices = np.arange(len(train_dataset))
 
 for frac in fractions:
 
@@ -126,69 +133,78 @@ for frac in fractions:
         sampler=SubsetRandomSampler(subset_idx)
     )
 
-    best_mape_frac = float("inf")
+    best_mape_frac = float("inf")   # <<< FIX
 
+    # grid search DENTRO da fração  <<< FIX (indentação)
+    for i in range(len(neurons)):
+        for j in range(len(layers)):
+            for k in range(len(learning_rates)):
 
-for i in range(len(neurons)):
-    for j in range(len(layers)):
-        for k in range(len(learning_rates)):
-            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
+                print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
 
-            input_dim = len(train_data.columns.drop(target))
+                input_dim = len(train_data.columns.drop(target))
+                output_dim = 1
 
-            output_dim = 1
+                model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
 
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
+                loss_func = nn.MSELoss()
+                optimizer = torch.optim.SGD(model.parameters(), lr=learning_rates[k])
 
-            loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
+                for a in range(epochs):
+                    model.train()
+                    for X, y in train_loader:
+                        pred_train = model(X)
+                        loss = loss_func(pred_train, y)
+                        loss.backward()
+                        optimizer.step()
+                        optimizer.zero_grad()
 
-            losses = torch.zeros(epochs)
+                time = datetime.datetime.now()
+                print(f"\tFinished training model at {time}.\n")
 
-            for a in range(epochs):
-                model.train()
-                for X, y in train_loader:
-                    pred_train = model(X)
-                    loss = loss_func(pred_train, y)
+                # avaliação
+                y_pred_list = []
+                y_test_list = []
 
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
+                model.eval()
+                with torch.no_grad():
+                    for X, y in test_loader:
+                        y_pred_list.append(model(X))
+                        y_test_list.append(y)
 
-            time = datetime.datetime.now()
+                y_pred = torch.cat(y_pred_list)
+                y_test = torch.cat(y_test_list)
 
-            print(f"\tFinished training model at {time}.\n")
+                Jou_score = r2_score(y_test.numpy(), y_pred.numpy())
+                Jou_mse = mean_squared_error(y_test.numpy(), y_pred.numpy())
+                Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-            y_pred_list = []
-            y_test_list = []
+                print(f"\tSpecs:")
+                print(f"\t\t{var}_score: {Jou_score}, {var}_mse: {Jou_mse}, {var}_mape: {Jou_mape}.\n")
 
-            model.eval()
+                # <<< FIX — melhor da fração
+                if Jou_mape < best_mape_frac:
+                    best_mape_frac = Jou_mape
 
-            with torch.no_grad():
-                for X, y in test_loader:
-                    pred_test = model(X)
-                    y_pred_list.append(pred_test)
-                    y_test_list.append(y)
+                # <<< FIX — melhor global (pesos)
+                if Jou_mape < best_mape:
+                    best_mape = Jou_mape
+                    best_model_block = model.linear
 
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
+                contents = [
+                    neurons[i], layers[j], learning_rates[k], epochs,
+                    Jou_score, Jou_mse, Jou_mape, time
+                ]
 
-            Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-            Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-            Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+                info = register_csv(contents, info)
 
-            print(f"\tSpecs:")
-            print(f"\t\t{var}_score: {Jou_score}, {var}_mse: {Jou_mse}, {var}_mape: {Jou_mape}.\n")
+    # <<< FIX — salvar resultado da fração
+    curve_results.append({
+        "fraction": frac,
+        "best_mape": best_mape_frac
+    })
 
-            if Jou_mape < best_mape:
-                best_mape = Jou_mape
-                best_model_block = model.linear
-
-
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, time]
-
-            info = register_csv(contents, info)
-
+    print(f"\n>>> BEST MAPE FRACTION {frac} = {best_mape_frac}")
  # =========================
     # salva melhor da fração
     # =========================
