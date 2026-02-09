@@ -149,65 +149,65 @@ for frac in fractions:
 
     best_mape_frac = float("inf")
 
-for i in range(len(ft_learning_rates)):
+    for i in range(len(ft_learning_rates)):
 
-    print(f"\nTraining model --- {ft_learning_rates[i]}-{epochs}\n")
+        print(f"\nTraining model --- {ft_learning_rates[i]}-{epochs}\n")
 
-    model = TransLRegressionModel(
-        input_dim = len(train_data.columns.drop(target)),
-        peso_path= arquivo 
-    )
+        model = TransLRegressionModel(
+            input_dim = len(train_data.columns.drop(target)),
+            peso_path= arquivo 
+        )
 
-    loss_func = nn.MSELoss()
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
+        loss_func = nn.MSELoss()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
 
-    for a in range(epochs):
-        model.train()
-        for X, y in train_loader:
-            pred_train = model(X)
-            loss = loss_func(pred_train, y)
+        for a in range(epochs):
+            model.train()
+            for X, y in train_loader:
+                pred_train = model(X)
+                loss = loss_func(pred_train, y)
 
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-    
-    time = datetime.datetime.now()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+        
+        time = datetime.datetime.now()
 
-    y_pred_list = []
-    y_test_list = []
+        y_pred_list = []
+        y_test_list = []
 
-    model.eval()
+        model.eval()
 
-    with torch.no_grad():
-        for X, y in test_loader:
-            pred_test = model(X)
-            y_pred_list.append(pred_test)
-            y_test_list.append(y)
+        with torch.no_grad():
+            for X, y in test_loader:
+                pred_test = model(X)
+                y_pred_list.append(pred_test)
+                y_test_list.append(y)
 
-    y_pred = torch.cat(y_pred_list)
-    y_test = torch.cat(y_test_list)
+        y_pred = torch.cat(y_pred_list)
+        y_test = torch.cat(y_test_list)
 
-    Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-    Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-    Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+        Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+        Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+        Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
 
-    print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
+        print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
-    contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
+        contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
-    info = register_csv(contents, info)
+        info = register_csv(contents, info)
 
-    if Jou_mape < best_mape_frac:
-        best_mape_frac = Jou_mape
+        if Jou_mape < best_mape_frac:
+            best_mape_frac = Jou_mape
 
-# salvando a curva de resultados
-curve_results.append({
-    "fraction": frac,
-    "best_mape": best_mape_frac
-})
+    # salvando a curva de resultados
+    curve_results.append({
+        "fraction": frac,
+        "best_mape": best_mape_frac
+    })
 
-print("BEST TL MAPE =", best_mape_frac)
+    print("BEST TL MAPE =", best_mape_frac)
 
 curve_df = pd.DataFrame(curve_results)
 
