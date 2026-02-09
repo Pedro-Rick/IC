@@ -211,7 +211,7 @@ for frac in fractions:
 
 curve_df = pd.DataFrame(curve_results)
 
-curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos" / f"curve_TL_{MOTOR}_{var}.csv"
 curve_df.to_csv(curve_path, index=False)
 
 #BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"

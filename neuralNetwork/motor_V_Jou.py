@@ -103,11 +103,7 @@ best_state_dict = None
 best_neurons = None
 best_layers = None
 best_lr = None
-
-# definindo a variaveis do grafico
-fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
-curve_results = []
-
+ 
 full_indices = np.arange(len(train_dataset))
 
 best_mape = float("inf")
@@ -205,16 +201,9 @@ for frac in fractions:
     })
 
     print(f"\n>>> BEST MAPE FRACTION {frac} = {best_mape_frac}")
- # =========================
+    # =========================
     # salva melhor da fração
     # =========================
-
-    curve_results.append({
-        "fraction": frac,
-        "best_mape": best_mape_frac
-    })
-
-    print(f"\n>>> BEST MAPE FRACTION {frac} = {best_mape}")
 
 # =========================
 # SALVA CURVA
