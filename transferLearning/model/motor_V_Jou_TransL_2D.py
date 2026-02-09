@@ -211,13 +211,17 @@ print("BEST TL MAPE =", best_mape_frac)
 
 curve_df = pd.DataFrame(curve_results)
 
-curve_path = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
+curve_path = BASE_DIR / ".." / "transL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
 curve_df.to_csv(curve_path, index=False)
+
+#BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
 
 print("Curva TL salva em:", curve_path)
 
-baseline_path = BASE_DIR / ".." / "transL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+baseline_path = BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
 base_df = pd.read_csv(baseline_path)
+
+#BASE_DIR / ".." / "transL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
 
 plt.figure()
 
