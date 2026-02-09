@@ -17,8 +17,8 @@ var = "Jou"
 target = ["joule"]
 
 BASE_DIR = Path(__file__).resolve().parent
-
-PATH = BASE_DIR.parent / "dataset" / MOTOR
+ROOT_DIR = BASE_DIR.parent.parent   # IC
+PATH = ROOT_DIR / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
@@ -211,12 +211,12 @@ print("BEST TL MAPE =", best_mape_frac)
 
 curve_df = pd.DataFrame(curve_results)
 
-curve_path = BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
+curve_path = BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_tl_{MOTOR}_{var}.csv"
 curve_df.to_csv(curve_path, index=False)
 
 print("Curva TL salva em:", curve_path)
 
-baseline_path = BASE_DIR / "transferLearning" / "tranL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+baseline_path = BASE_DIR / ".." / "tranL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
 base_df = pd.read_csv(baseline_path)
 
 plt.figure()
@@ -242,7 +242,7 @@ plt.title(f"{MOTOR} — Baseline vs TL")
 plt.legend()
 plt.grid(True)
 
-plt.savefig(BASE_DIR / f"compare_TL_vs_base_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
+plt.savefig(BASE_DIR / ".." / "tranL_results" / f"{MOTOR}" / "graficos" / f"compare_TL_vs_base_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
 plt.show()
 
 print("\nFIM")
