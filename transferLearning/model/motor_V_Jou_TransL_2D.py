@@ -11,7 +11,7 @@ from torch.utils.data import SubsetRandomSampler
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "v"
+MOTOR = "V"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
