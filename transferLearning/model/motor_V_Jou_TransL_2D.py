@@ -216,7 +216,7 @@ curve_df.to_csv(curve_path, index=False)
 
 print("Curva TL salva em:", curve_path)
 
-baseline_path = BASE_DIR / ".." / "tranL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+baseline_path = BASE_DIR / ".." / "transL_results" / {MOTOR} / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
 base_df = pd.read_csv(baseline_path)
 
 plt.figure()
@@ -242,7 +242,7 @@ plt.title(f"{MOTOR} — Baseline vs TL")
 plt.legend()
 plt.grid(True)
 
-plt.savefig(BASE_DIR / ".." / "tranL_results" / f"{MOTOR}" / "graficos" / f"compare_TL_vs_base_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
+plt.savefig(BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos" / f"compare_TL_vs_base_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
 plt.show()
 
 print("\nFIM")
