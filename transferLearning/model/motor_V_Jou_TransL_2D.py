@@ -17,24 +17,29 @@ var = "Jou"
 target = ["joule"]
 
 BASE_DIR = Path(__file__).resolve().parent
-PATH = BASE_DIR / ".." / ".." / "dataset" / MOTOR
+
+PATH = BASE_DIR.parent / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
 train_data = pd.DataFrame()
-train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
-train_data["joule"] = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
+train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
+
 
 test_data = pd.DataFrame()
-test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
-test_data["joule"] = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
+test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
+
 
 class TransLRegressionModel(nn.Module):
 
