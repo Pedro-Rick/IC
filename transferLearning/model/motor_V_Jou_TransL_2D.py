@@ -198,12 +198,12 @@ for frac in fractions:
 
             with torch.no_grad():
                 for X, y in test_loader:
-                    pred_test = model(X)
-                    y_pred_list.append(pred_test)
+                    X, y = X.to(device), y.to(device)
+                    y_pred_list.append(model(X))
                     y_test_list.append(y)
 
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
+            y_pred = torch.cat(y_pred_list).cpu()
+            y_test = torch.cat(y_test_list).cpu()
 
             Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
             Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
