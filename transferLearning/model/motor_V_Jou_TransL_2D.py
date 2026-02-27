@@ -11,6 +11,9 @@ from torch.utils.data import SubsetRandomSampler
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
+torch.manual_seed(42)
+np.random.seed(42)
+
 MOTOR = "V"
 MOTOR_TL = "2D"
 var = "Jou"
@@ -119,7 +122,7 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 
 #para finetuning
 
-ft_learning_rates = [1e-3, 5e-4]
+ft_learning_rates = [1e-2, 1e-3, 5e-4, 1e-4]
 epochs = 100
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
@@ -128,7 +131,11 @@ info = pd.DataFrame(columns=columns)
 
 # definindo a variaveis do grafico
 fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
+seeds = [0, 1, 2, 3, 4]
 curve_results = []
+
+best_mape = float("inf")
+best_model_block = None
 
 full_indices = np.arange(len(train_dataset))
 
@@ -137,77 +144,94 @@ for frac in fractions:
     print("\n====================")
     print("FRACTION =", frac)
     print("====================")
+    
+    mape_runs = []
 
-    subset_size = int(len(train_dataset) * frac)
-    subset_idx = np.random.choice(full_indices, subset_size, replace=False)
+    for seed in seeds:
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
-        sampler=SubsetRandomSampler(subset_idx)
-    )
+        print(f"\n--- SEED {seed} ---")
 
-    best_mape_frac = float("inf")
+        rng = np.random.default_rng(seed)
 
-    for i in range(len(ft_learning_rates)):
+        subset_size = int(len(train_dataset) * frac)
+        subset_idx = rng.choice(full_indices, subset_size, replace=False)
 
-        print(f"\nTraining model --- {ft_learning_rates[i]}-{epochs}\n")
-
-        model = TransLRegressionModel(
-            input_dim = len(train_data.columns.drop(target)),
-            peso_path= arquivo 
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            sampler=SubsetRandomSampler(subset_idx)
         )
 
-        loss_func = nn.MSELoss()
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
+        best_mape_seed = float("inf")
 
-        for a in range(epochs):
-            model.train()
-            for X, y in train_loader:
-                pred_train = model(X)
-                loss = loss_func(pred_train, y)
+        for i in range(len(ft_learning_rates)):
 
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-        
-        time = datetime.datetime.now()
+            print(f"\nTraining model --- {ft_learning_rates[i]}-{epochs}\n")
 
-        y_pred_list = []
-        y_test_list = []
+            model = TransLRegressionModel(
+                input_dim = len(train_data.columns.drop(target)),
+                peso_path= arquivo 
+            )
 
-        model.eval()
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
+            loss_func = nn.MSELoss()
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
 
-        with torch.no_grad():
-            for X, y in test_loader:
-                pred_test = model(X)
-                y_pred_list.append(pred_test)
-                y_test_list.append(y)
+            for a in range(epochs):
+                model.train()
+                for X, y in train_loader:
+                    X, y = X.to(device), y.to(device)
+                    pred_train = model(X)
+                    loss = loss_func(pred_train, y)
 
-        y_pred = torch.cat(y_pred_list)
-        y_test = torch.cat(y_test_list)
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+            
+            time = datetime.datetime.now()
 
-        Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-        Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-        Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            y_pred_list = []
+            y_test_list = []
+
+            model.eval()
+
+            with torch.no_grad():
+                for X, y in test_loader:
+                    pred_test = model(X)
+                    y_pred_list.append(pred_test)
+                    y_test_list.append(y)
+
+            y_pred = torch.cat(y_pred_list)
+            y_test = torch.cat(y_test_list)
+
+            Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+            Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+            Jou_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
 
 
-        print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
+            print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
-        contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
+            contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
-        info = register_csv(contents, info)
+            info = register_csv(contents, info)
 
-        if Jou_mape < best_mape_frac:
-            best_mape_frac = Jou_mape
+            if Jou_mape < best_mape_seed:
+                best_mape_seed = Jou_mape
+            
+            if frac == 1.0 and Jou_mape < best_mape:
+                best_mape = Jou_mape
+                best_model_block = model.linear
+    
+        mape_runs.append(best_mape_seed)
 
     # salvando a curva de resultados
     curve_results.append({
         "fraction": frac,
-        "best_mape": best_mape_frac
-    })
-
-    print("BEST TL MAPE =", best_mape_frac)
+        "mape_mean": np.mean(mape_runs),
+        "mape_std": np.std(mape_runs),
+        "mape_best": np.min(mape_runs)
+    })     
 
 curve_df = pd.DataFrame(curve_results)
 
@@ -227,21 +251,28 @@ plt.figure()
 
 plt.plot(
     base_df["fraction"],
-    base_df["best_mape"],
+    base_df["mape_mean"],
     'o-',
     label="Baseline"
 )
 
 plt.plot(
     curve_df["fraction"],
-    curve_df["best_mape"],
+    curve_df["mape_mean"],
     's--',
     label="Transfer Learning"
 )
 
+plt.fill_between(
+    base_df["fraction"],
+    base_df["mape_mean"] - base_df["mape_std"],
+    base_df["mape_mean"] + base_df["mape_std"],
+    alpha=0.2
+)
+
 plt.xscale("log")
 plt.xlabel("Fração dos dados de treino")
-plt.ylabel("Melhor MAPE")
+plt.ylabel("MAPE médio")
 plt.title(f"{MOTOR} — Baseline vs TL")
 plt.legend()
 plt.grid(True)
