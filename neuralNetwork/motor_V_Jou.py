@@ -122,8 +122,11 @@ epoch_curve = np.zeros(epochs)
 for i in range(len(neurons)):
     for j in range(len(layers)):
         for k in range(len(learning_rates)):
-
+            
+            print("============")
             print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}")
+            print("============")
+            print("")
 
             input_dim = len(train_data.columns.drop(target))
             model = RegressionModel(input_dim, 1, neurons[i], layers[j])
@@ -140,6 +143,8 @@ for i in range(len(neurons)):
 
             # ===== TRAIN POR EPOCH =====
             for ep in range(epochs):
+
+                print(f"======= Epoca {epochs[ep]} =======")
 
                 model.train()
                 for X, y in train_loader_full:
@@ -177,6 +182,9 @@ for i in range(len(neurons)):
                     best_model_block = model.linear
 
                 best_mape_so_far.append(best_mape)
+
+                print(f"best_mape = {best_mape}")
+                print("")
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds()    
