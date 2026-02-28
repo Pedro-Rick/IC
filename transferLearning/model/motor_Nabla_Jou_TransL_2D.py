@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import SubsetRandomSampler
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
@@ -30,17 +31,17 @@ TEST_FILE  = "_all_scaled_test.csv"
 # =========================
 train_data = pd.DataFrame()
 
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
 train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
-train_data = pd.concat([train_data, pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")], axis=1)
+train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
 train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
 
 test_data = pd.DataFrame()
 
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"idiq{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
 test_data["speed"] = pd.read_csv(PATH / f"speed{TEST_FILE}")["N"]
-test_data = pd.concat([test_data, pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")], axis=1)
+test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(columns="Unnamed: 0")],axis=1)
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
@@ -48,6 +49,7 @@ test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 # MODEL TL
 # =========================
 class TransLRegressionModel(nn.Module):
+
     def __init__(self, input_dim, peso_path):
         super().__init__()
 
@@ -67,12 +69,11 @@ class TransLRegressionModel(nn.Module):
             nn.ReLU()
         )
 
-        # congela tudo
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
 
-        # libera últimas 2 camadas
         layers = list(self.pretrained_block.children())
+
         for layer in layers[-2:]:
             for p in layer.parameters():
                 p.requires_grad = True
@@ -96,9 +97,6 @@ class MotorDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-# =========================
-# REGISTER
-# =========================
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns=info.columns)
     info = pd.concat([info, new_row])
@@ -118,77 +116,90 @@ BATCH_SIZE = 256
 train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
 test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 
-train_loader_full = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
+# =========================
+# PESOS
+# =========================
 arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 
 # =========================
-# CONFIG
+# CONFIG TL
 # =========================
 ft_learning_rates = [1e-2, 1e-3, 5e-4, 1e-4]
 epochs = 100
-seeds = [0, 1, 2, 3, 4]
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 info = pd.DataFrame(columns=columns)
 
-# =========================
-# CURVA GLOBAL
-# =========================
-epoch_curve = np.zeros(epochs)
-best_global_mape = float("inf")
-best_model_block = None
+fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
+seeds = [0, 1, 2, 3, 4]
+curve_results = []
+
+full_indices = np.arange(len(train_dataset))
 
 # =========================
 # MAIN LOOP
 # =========================
-for seed in seeds:
+for frac in fractions:
 
-    print(f"\n================ SEED {seed} ================")
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    print("\n====================")
+    print("FRACTION =", frac)
+    print("====================")
+    
+    mape_runs = []
 
-    epoch_mape_accumulator = np.zeros(epochs)
+    for seed in seeds:
 
-    for lr in ft_learning_rates:
+        print(f"\n--- SEED {seed} ---")
 
-        print(f"\nTraining model --- lr={lr}")
+        rng = np.random.default_rng(seed)
 
-        model = TransLRegressionModel(
-            input_dim=len(train_data.columns.drop(target)),
-            peso_path=arquivo
+        subset_size = int(len(train_dataset) * frac)
+        subset_idx = rng.choice(full_indices, subset_size, replace=False)
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            sampler=SubsetRandomSampler(subset_idx)
         )
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
+        best_mape_seed = float("inf")
 
-        loss_func = nn.MSELoss()
-        optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=lr
-        )
+        for lr in ft_learning_rates:
 
-        start_time = datetime.datetime.now()
+            print(f"\nTraining model --- {lr}-{epochs}\n")
 
-        best_mape = float("inf")
-        best_mape_so_far = []
+            model = TransLRegressionModel(
+                input_dim=len(train_data.columns.drop(target)),
+                peso_path=arquivo
+            )
 
-        # ===== TRAIN POR EPOCH =====
-        for ep in range(epochs):
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
 
-            model.train()
-            for X, y in train_loader_full:
-                X, y = X.to(device), y.to(device)
+            loss_func = nn.MSELoss()
+            optimizer = torch.optim.Adam(
+                filter(lambda p: p.requires_grad, model.parameters()),
+                lr=lr
+            )
+            start_time = datetime.datetime.now()
 
-                pred_train = model(X)
-                loss = loss_func(pred_train, y)
+            # ===== TREINO =====
+            for _ in range(epochs):
+                model.train()
+                for X, y in train_loader:
+                    X, y = X.to(device), y.to(device)
+                    pred_train = model(X)
+                    loss = loss_func(pred_train, y)
 
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
 
-            # ===== EVAL =====
+            # ===== TESTE =====
+            time = datetime.datetime.now()
+
             y_pred_list = []
             y_test_list = []
 
@@ -206,52 +217,80 @@ for seed in seeds:
             Jou_mse = mean_squared_error(y_test.numpy(), y_pred.numpy())
             Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-            if Jou_mape < best_mape:
-                best_mape = Jou_mape
-                if Jou_mape < best_global_mape:
-                    best_global_mape = Jou_mape
-                    best_model_block = model.pretrained_block
+            print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
-            best_mape_so_far.append(best_mape)
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds() 
+            contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+            info = register_csv(contents, info)
 
-        end_time = datetime.datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
+            if Jou_mape < best_mape_seed:
+                best_mape_seed = Jou_mape
 
-        contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
-        info = register_csv(contents, info)
+        mape_runs.append(best_mape_seed)
 
-        epoch_mape_accumulator += np.array(best_mape_so_far)
-
-    epoch_curve += epoch_mape_accumulator / len(ft_learning_rates)
-
-# média entre seeds
-epoch_curve /= len(seeds)
+    # ===== CURVA TL (BEST) =====
+    curve_results.append({
+        "fraction": frac,
+        "best_mape_mean": np.mean(mape_runs),
+        "best_mape_std": np.std(mape_runs),
+        "best_mape": np.min(mape_runs)
+    })
 
 # =========================
-# SAVE CURVE
+# SAVE CURVE TL
 # =========================
-curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1),
-    "best_mape_mean": epoch_curve
-})
+curve_df = pd.DataFrame(curve_results)
 
-curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
-curve_path.mkdir(parents=True, exist_ok=True)
-curve_path = curve_path / f"curve_TL_epochs_{MOTOR}_{var}.csv"
-
+curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos" / f"curve_TL_{MOTOR}_{var}.csv"
+curve_path.parent.mkdir(parents=True, exist_ok=True)
 curve_df.to_csv(curve_path, index=False)
+
 print("Curva TL salva em:", curve_path)
 
 # =========================
-# PLOT
+# LOAD BASELINE (POR FRACTION)
+# =========================
+baseline_path = BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+base_df = pd.read_csv(baseline_path)
+
+# =========================
+# PLOT COMPARAÇÃO
 # =========================
 plt.figure()
-plt.plot(curve_df["epoch"], curve_df["best_mape_mean"], label="Transfer Learning")
-plt.xlabel("Epoch")
+
+plt.plot(
+    base_df["fraction"],
+    base_df["best_mape_mean"],
+    'o-',
+    label="Baseline"
+)
+
+plt.plot(
+    curve_df["fraction"],
+    curve_df["best_mape_mean"],
+    's--',
+    label="Transfer Learning"
+)
+
+plt.fill_between(
+    base_df["fraction"],
+    base_df["best_mape_mean"] - base_df["best_mape_std"],
+    base_df["best_mape_mean"] + base_df["best_mape_std"],
+    alpha=0.2
+)
+
+plt.xscale("log")
+plt.xlabel("Fração dos dados de treino")
 plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — TL Best MAPE vs Epochs")
-plt.grid(True)
+plt.title(f"{MOTOR} — Baseline vs TL (Best)")
 plt.legend()
+plt.grid(True)
+
+save_fig = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
+save_fig.mkdir(parents=True, exist_ok=True)
+
+plt.savefig(save_fig / f"baseline_{MOTOR}_vs_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
 plt.show()
 
 print("\nFIM")

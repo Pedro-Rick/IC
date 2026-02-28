@@ -10,9 +10,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-torch.manual_seed(42)
-np.random.seed(42)
-
 MOTOR = "V"
 var = "Jou"
 
@@ -100,7 +97,6 @@ layers = [1, 2]
 learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
-seeds = [0]
 
 # =========================
 # DATASETS
@@ -122,85 +118,75 @@ epoch_curve = np.zeros(epochs)
 # =========================
 # MAIN LOOP
 # =========================
-for seed in seeds:
 
-    print(f"\n================ SEED {seed} ================")
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+for i in range(len(neurons)):
+    for j in range(len(layers)):
+        for k in range(len(learning_rates)):
 
-    epoch_mape_accumulator = np.zeros(epochs)
+            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}")
 
-    for i in range(len(neurons)):
-        for j in range(len(layers)):
-            for k in range(len(learning_rates)):
+            input_dim = len(train_data.columns.drop(target))
+            model = RegressionModel(input_dim, 1, neurons[i], layers[j])
 
-                print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
 
-                input_dim = len(train_data.columns.drop(target))
-                model = RegressionModel(input_dim, 1, neurons[i], layers[j])
+            loss_func = nn.MSELoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
+            start_time = datetime.datetime.now()
 
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model.to(device)
+            best_mape_so_far = []
+            best_mape = float("inf")
 
-                loss_func = nn.MSELoss()
-                optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
-                start_time = datetime.datetime.now()
+            # ===== TRAIN POR EPOCH =====
+            for ep in range(epochs):
 
-                best_mape_so_far = []
-                best_mape = float("inf")
+                model.train()
+                for X, y in train_loader_full:
+                    X, y = X.to(device), y.to(device)
 
-                # ===== TRAIN POR EPOCH =====
-                for ep in range(epochs):
+                    pred_train = model(X)
+                    loss = loss_func(pred_train, y)
 
-                    model.train()
-                    for X, y in train_loader_full:
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    
+
+                # ===== EVAL A CADA EPOCH =====
+                y_pred_list = []
+                y_test_list = []
+
+                model.eval()
+                with torch.no_grad():
+                    for X, y in test_loader:
                         X, y = X.to(device), y.to(device)
+                        y_pred_list.append(model(X))
+                        y_test_list.append(y)
 
-                        pred_train = model(X)
-                        loss = loss_func(pred_train, y)
+                y_pred = torch.cat(y_pred_list).cpu()
+                y_test = torch.cat(y_test_list).cpu()
 
-                        loss.backward()
-                        optimizer.step()
-                        optimizer.zero_grad()
-                        
+                Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+                Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+                Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-                    # ===== EVAL A CADA EPOCH =====
-                    y_pred_list = []
-                    y_test_list = []
+                # 🔥 BEST MAPE ATÉ A ÉPOCA
+                if Jou_mape < best_mape:
+                    best_mape = Jou_mape
+                    best_model_block = model.linear
 
-                    model.eval()
-                    with torch.no_grad():
-                        for X, y in test_loader:
-                            X, y = X.to(device), y.to(device)
-                            y_pred_list.append(model(X))
-                            y_test_list.append(y)
+                best_mape_so_far.append(best_mape)
 
-                    y_pred = torch.cat(y_pred_list).cpu()
-                    y_test = torch.cat(y_test_list).cpu()
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds()    
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+            info = register_csv(contents, info)
+            
+            # 🔥 acumula curva best
+            epoch_mape_accumulator += np.array(best_mape_so_far)
 
-                    Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-                    Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-                    Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
-
-                    # 🔥 BEST MAPE ATÉ A ÉPOCA
-                    if Jou_mape < best_mape:
-                        best_mape = Jou_mape
-                        best_model_block = model.linear
-
-                    best_mape_so_far.append(best_mape)
-
-                end_time = datetime.datetime.now()
-                elapsed_time = (end_time - start_time).total_seconds()    
-                contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
-                info = register_csv(contents, info)
-                
-                # 🔥 acumula curva best
-                epoch_mape_accumulator += np.array(best_mape_so_far)
-
-    epoch_curve += epoch_mape_accumulator / len(neurons) / len(layers) / len(learning_rates)
-
-# média entre seeds
-epoch_curve /= len(seeds)
+epoch_curve = epoch_mape_accumulator / len(neurons) / len(layers) / len(learning_rates)
 
 # =========================
 # SAVE CURVE
@@ -220,7 +206,7 @@ print("\nCurva salva em:", SAVE_CURVE)
 # PLOT
 # =========================
 plt.figure()
-plt.plot(curve_df["epoch"], curve_df["best_mape_mean"], label="Baseline")
+plt.plot(curve_df["epoch"], curve_df["best_mape"], label="Baseline")
 plt.xlabel("Epoch")
 plt.ylabel("Best MAPE")
 plt.title("Baseline — Best MAPE vs Epochs")
