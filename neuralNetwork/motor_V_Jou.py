@@ -77,6 +77,20 @@ class MotorDataset(Dataset):
         return self.X[index], self.y[index]
 
 # =========================
+# REGISTER
+# =========================
+def register_csv(contents, info):
+    new_row = pd.DataFrame([contents], columns = info.columns)
+    info = pd.concat([info, new_row])
+    BASE_DIR = Path(__file__).resolve().parent
+    SAVE_PATH = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info.csv"
+    info.to_csv(SAVE_PATH, index=False)
+    return info
+
+columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_mape', 'time'] 
+info = pd.DataFrame(columns = columns)
+
+# =========================
 # CONFIG
 # =========================
 target = ['joule']
@@ -162,6 +176,10 @@ for seed in seeds:
                     y_pred = torch.cat(y_pred_list).cpu()
                     y_test = torch.cat(y_test_list).cpu()
 
+                    hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+                    hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+                    hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
+
                     Jou_mape = mean_absolute_percentage_error(
                         y_test.numpy(), y_pred.numpy()
                     )
@@ -172,6 +190,9 @@ for seed in seeds:
                         best_model_block = model.linear
 
                     best_mape_so_far.append(best_mape)
+
+                    contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
+                    info = register_csv(contents, info)
 
                 # 🔥 acumula curva best
                 epoch_mape_accumulator += np.array(best_mape_so_far)

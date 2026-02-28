@@ -213,7 +213,6 @@ for frac in fractions:
             print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
             contents = [ft_learning_rates[i], epochs, Jou_score, Jou_mse, Jou_mape, time]
-
             info = register_csv(contents, info)
 
             if Jou_mape < best_mape_seed:
