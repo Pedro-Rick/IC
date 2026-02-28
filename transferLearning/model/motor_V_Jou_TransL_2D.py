@@ -168,6 +168,8 @@ for lr in ft_learning_rates:
     # ===== TRAIN POR EPOCH =====
     for ep in range(epochs):
 
+        print(f"======= Epoca {ep} =======")
+
         model.train()
         for X, y in train_loader_full:
             X, y = X.to(device), y.to(device)
@@ -197,11 +199,16 @@ for lr in ft_learning_rates:
         Jou_mse = mean_squared_error(y_test.numpy(), y_pred.numpy())
         Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
+        print(f"")
+
         if Jou_mape < best_mape:
             best_mape = Jou_mape
             if Jou_mape < best_global_mape:
                 best_global_mape = Jou_mape
                 best_model_block = model.pretrained_block
+
+        print(f"best_mape = {best_mape}")
+        print("")
 
         best_mape_so_far.append(best_mape)
 
