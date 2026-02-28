@@ -122,7 +122,7 @@ for i in range(len(neurons)):
         for k in range(len(learning_rates)):
             
             print("============")
-            print(f"\nTraining model --- neuons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
+            print(f"\nTraining model --- neurons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
             print("============")
             print("")
 
@@ -193,7 +193,7 @@ for i in range(len(neurons)):
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1, 5),
+    "epoch": np.arange(1, epochs + 1),
     "best_mape": best_mape_so_far
 })
 

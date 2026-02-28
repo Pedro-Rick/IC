@@ -225,7 +225,7 @@ for lr in ft_learning_rates:
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1, 5),
+    "epoch": np.arange(1, epochs + 1),
     "best_mape_mean": epoch_curve
 })
 
