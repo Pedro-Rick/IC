@@ -111,11 +111,11 @@ for i in range(len(neurons)):
 
             output_dim = 1
 
+            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
+            
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model.to(device)
-
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
-
+            
             loss_func = nn.MSELoss()
             optimizer = torch.optim.Adam(model.parameters(), lr = learning_rates[k])
 
