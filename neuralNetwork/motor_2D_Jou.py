@@ -114,7 +114,7 @@ for i in range(len(neurons)):
             model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
 
             loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
+            optimizer = torch.optim.Adam(model.parameters(), lr = learning_rates[k])
 
             losses = torch.zeros(epochs)
 
