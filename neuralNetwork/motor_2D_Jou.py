@@ -115,7 +115,7 @@ for i in range(len(neurons)):
             
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model.to(device)
-            
+
             loss_func = nn.MSELoss()
             optimizer = torch.optim.Adam(model.parameters(), lr = learning_rates[k])
 
@@ -144,6 +144,7 @@ for i in range(len(neurons)):
             with torch.no_grad():
                 for X, y in test_loader:
                     pred_test = model(X)
+                    X, y = X.to(device), y.to(device)
                     y_pred_list.append(pred_test)
                     y_test_list.append(y)
 
