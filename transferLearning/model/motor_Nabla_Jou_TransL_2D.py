@@ -177,6 +177,7 @@ for frac in fractions:
             model.to(device)
             loss_func = nn.MSELoss()
             optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=ft_learning_rates[i])
+            start_time = datetime.datetime.now()
 
             for a in range(epochs):
                 model.train()
@@ -214,7 +215,7 @@ for frac in fractions:
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds() 
-            contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+            contents = [ft_learning_rates, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
             info = register_csv(contents, info)
 
             if Jou_mape < best_mape_seed:
