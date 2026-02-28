@@ -218,10 +218,6 @@ for frac in fractions:
 
             if Jou_mape < best_mape_seed:
                 best_mape_seed = Jou_mape
-            
-            if frac == 1.0 and Jou_mape < best_mape:
-                best_mape = Jou_mape
-                best_model_block = model.linear
     
         mape_runs.append(best_mape_seed)
 
