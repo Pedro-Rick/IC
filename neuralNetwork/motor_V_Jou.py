@@ -144,7 +144,7 @@ for i in range(len(neurons)):
             # ===== TRAIN POR EPOCH =====
             for ep in range(epochs):
 
-                print(f"======= Epoca {epochs[ep]} =======")
+                print(f"======= Epoca {ep} =======")
 
                 model.train()
                 for X, y in train_loader_full:
