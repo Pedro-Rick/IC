@@ -111,6 +111,9 @@ for i in range(len(neurons)):
 
             output_dim = 1
 
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
+
             model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
 
             loss_func = nn.MSELoss()
@@ -121,6 +124,7 @@ for i in range(len(neurons)):
             for a in range(epochs):
                 model.train()
                 for X, y in train_loader:
+                    X, y = X.to(device), y.to(device)
                     pred_train = model(X)
                     loss = loss_func(pred_train, y)
 
@@ -143,8 +147,8 @@ for i in range(len(neurons)):
                     y_pred_list.append(pred_test)
                     y_test_list.append(y)
 
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
+            y_pred = torch.cat(y_pred_list).cpu()
+            y_test = torch.cat(y_test_list).cpu()
 
             Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
             Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
