@@ -143,8 +143,8 @@ for i in range(len(neurons)):
 
             with torch.no_grad():
                 for X, y in test_loader:
-                    pred_test = model(X)
                     X, y = X.to(device), y.to(device)
+                    pred_test = model(X)
                     y_pred_list.append(pred_test)
                     y_test_list.append(y)
 
