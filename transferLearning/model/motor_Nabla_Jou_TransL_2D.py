@@ -259,31 +259,16 @@ base_df = pd.read_csv(baseline_path)
 # =========================
 plt.figure()
 
-plt.plot(
-    base_df["fraction"],
-    base_df["best_mape_mean"],
-    'o-',
-    label="Baseline"
-)
+plt.plot(base_df["fraction"], base_df["best_mape_mean"], 'o-', blabel="Baseline")
 
-plt.plot(
-    curve_df["fraction"],
-    curve_df["best_mape_mean"],
-    's--',
-    label="Transfer Learning"
-)
+plt.plot(curve_df["fraction"], curve_df["best_mape_mean"], 's--', label="Transfer Learning")
 
-plt.fill_between(
-    base_df["fraction"],
-    base_df["best_mape_mean"] - base_df["best_mape_std"],
-    base_df["best_mape_mean"] + base_df["best_mape_std"],
-    alpha=0.2
-)
+plt.fill_between(base_df["fraction"], base_df["best_mape_mean"] - base_df["best_mape_std"], base_df["best_mape_mean"] + base_df["best_mape_std"], alpha=0.2)
 
 plt.xscale("log")
 plt.xlabel("Fração dos dados de treino")
 plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — Baseline vs TL (Best)")
+plt.title(f"{MOTOR} — Baseline vs TL (Best Mape)")
 plt.legend()
 plt.grid(True)
 

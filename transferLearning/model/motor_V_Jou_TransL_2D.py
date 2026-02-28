@@ -244,29 +244,23 @@ curve_df.to_csv(curve_path, index=False)
 print("Curva TL salva em:", curve_path)
 
 # =========================
+# LOAD BASELINE (POR FRACTION)
+# =========================
+baseline_path = BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+base_df = pd.read_csv(baseline_path)
+
+# =========================
 # PLOT
 # =========================
 plt.figure()
-
-plt.plot(
-    curve_df["epoch"],
-    curve_df["best_mape_mean"],
-    's--',
-    label="Transfer Learning"
-)
-
-plt.fill_between(
-    curve_df["epoch"],
-    curve_df["best_mape_mean"] - curve_df["best_mape_std"],
-    curve_df["best_mape_mean"] + curve_df["best_mape_std"],
-    alpha=0.2
-)
-
+plt.plot(base_df["epoch"], base_df["best_mape_mean"], 'o-', blabel="Baseline")
+plt.plot(curve_df["epoch"], curve_df["best_mape_mean"], 's--', label="Transfer Learning")
+plt.fill_between(base_df["fraction"], base_df["best_mape_mean"] - base_df["best_mape_std"], base_df["best_mape_mean"] + base_df["best_mape_std"], alpha=0.2)
 plt.xlabel("Epoch")
 plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — TL Best MAPE vs Epochs")
-plt.legend()
+plt.title(f"{MOTOR} — Baseline vs TL (Best Mape)")
 plt.grid(True)
+plt.legend()
 
 save_fig = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
 save_fig.mkdir(parents=True, exist_ok=True)
