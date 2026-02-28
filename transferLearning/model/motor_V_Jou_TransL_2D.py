@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "Nabla"
+MOTOR = "V"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
@@ -218,7 +218,7 @@ for lr in ft_learning_rates:
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1),
+    "epoch": np.arange(1, epochs + 1, 5),
     "best_mape_mean": epoch_curve
 })
 

@@ -122,7 +122,7 @@ for i in range(len(neurons)):
         for k in range(len(learning_rates)):
             
             print("============")
-            print(f"\nTraining model --- neuons: {neurons[i]} -layers: {layers[j]}- lr: {learning_rates[k]}")
+            print(f"\nTraining model --- neuons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
             print("============")
             print("")
 
