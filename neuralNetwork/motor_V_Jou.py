@@ -113,8 +113,6 @@ test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 best_mape = float("inf")
 best_model_block = None
 
-epoch_curve = np.zeros(epochs)
-
 # =========================
 # MAIN LOOP
 # =========================
@@ -124,7 +122,7 @@ for i in range(len(neurons)):
         for k in range(len(learning_rates)):
             
             print("============")
-            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}")
+            print(f"\nTraining model --- neuons: {neurons[i]} -layers: {layers[j]}- lr: {learning_rates[k]}")
             print("============")
             print("")
 
@@ -190,24 +188,18 @@ for i in range(len(neurons)):
             elapsed_time = (end_time - start_time).total_seconds()    
             contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
             info = register_csv(contents, info)
-            
-            # 🔥 acumula curva best
-            epoch_mape_accumulator += np.array(best_mape_so_far)
-
-epoch_curve = epoch_mape_accumulator / len(neurons) / len(layers) / len(learning_rates)
 
 # =========================
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
     "epoch": np.arange(1, epochs + 1),
-    "best_mape_mean": epoch_curve
+    "best_mape": best_mape_so_far
 })
 
 SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
 SAVE_CURVE.parent.mkdir(parents=True, exist_ok=True)
 curve_df.to_csv(SAVE_CURVE, index=False)
-
 print("\nCurva salva em:", SAVE_CURVE)
 
 # =========================
