@@ -193,7 +193,7 @@ for i in range(len(neurons)):
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1),
+    "epoch": np.arange(1, epochs + 1, 5),
     "best_mape": best_mape_so_far
 })
 
