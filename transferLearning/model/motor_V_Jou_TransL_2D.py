@@ -183,6 +183,7 @@ for frac in fractions:
                 filter(lambda p: p.requires_grad, model.parameters()),
                 lr=lr
             )
+            start_time = datetime.datetime.now()
 
             # ===== TREINO =====
             for _ in range(epochs):
@@ -218,7 +219,9 @@ for frac in fractions:
 
             print(f"R2={Jou_score:.4f} | MSE={Jou_mse:.4e} | MAPE={Jou_mape:.4f}")
 
-            contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, time]
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds() 
+            contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
             info = register_csv(contents, info)
 
             if Jou_mape < best_mape_seed:

@@ -144,6 +144,7 @@ for seed in seeds:
 
                 loss_func = nn.MSELoss()
                 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
+                start_time = datetime.datetime.now()
 
                 best_mape_so_far = []
                 best_mape = float("inf")
@@ -161,6 +162,7 @@ for seed in seeds:
                         loss.backward()
                         optimizer.step()
                         optimizer.zero_grad()
+                        
 
                     # ===== EVAL A CADA EPOCH =====
                     y_pred_list = []
@@ -176,13 +178,9 @@ for seed in seeds:
                     y_pred = torch.cat(y_pred_list).cpu()
                     y_test = torch.cat(y_test_list).cpu()
 
-                    hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-                    hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-                    hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
-
-                    Jou_mape = mean_absolute_percentage_error(
-                        y_test.numpy(), y_pred.numpy()
-                    )
+                    Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+                    Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+                    Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
                     # 🔥 BEST MAPE ATÉ A ÉPOCA
                     if Jou_mape < best_mape:
@@ -191,9 +189,11 @@ for seed in seeds:
 
                     best_mape_so_far.append(best_mape)
 
-                    contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
-                    info = register_csv(contents, info)
-
+                end_time = datetime.datetime.now()
+                elapsed_time = (end_time - start_time).total_seconds()    
+                contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+                info = register_csv(contents, info)
+                
                 # 🔥 acumula curva best
                 epoch_mape_accumulator += np.array(best_mape_so_far)
 
