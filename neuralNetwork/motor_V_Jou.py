@@ -100,7 +100,7 @@ layers = [1, 2]
 learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
-seeds = [0, 1, 2, 3, 4]
+seeds = [0]
 
 # =========================
 # DATASETS
