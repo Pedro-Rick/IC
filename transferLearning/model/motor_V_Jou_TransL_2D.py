@@ -140,7 +140,8 @@ best_model_block = None
 # MAIN LOOP
 # =========================
 
-epoch_mape_accumulator = np.zeros(epochs)
+best_global_mape = float("inf")
+best_curve_global = None
 
 all_curves = []
 
@@ -205,14 +206,16 @@ for lr in ft_learning_rates:
 
         if Jou_mape < best_mape:
             best_mape = Jou_mape
-            if Jou_mape < best_global_mape:
-                best_global_mape = Jou_mape
-                best_model_block = model.pretrained_block
 
         print(f"best_mape = {best_mape}")
         print("")
 
         best_mape_so_far.append(best_mape)
+
+    if best_mape < best_global_mape:
+        best_global_mape = best_mape
+        best_curve_global = best_mape_so_far.copy()
+        best_model_block = model.pretrained_block
 
     end_time = datetime.datetime.now()
     elapsed_time = (end_time - start_time).total_seconds()
@@ -220,22 +223,13 @@ for lr in ft_learning_rates:
     contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
     info = register_csv(contents, info)
 
-all_curves.append(best_mape_so_far.copy())
-
-all_curves = np.array(all_curves)
-
-epoch_mean = all_curves.mean(axis=0)
-epoch_std  = all_curves.std(axis=0)
-
 # =========================
 # SAVE CURVE
 # =========================
 curve_df = pd.DataFrame({
     "epoch": np.arange(1, epochs + 1),
-    "best_mape_mean": epoch_mean,
-    "best_mape_std": epoch_std
+    "best_mape": best_curve_global,
 })
-
 curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
 curve_path.mkdir(parents=True, exist_ok=True)
 curve_path = curve_path / f"curve_TL_epochs_{MOTOR}_{var}.csv"
@@ -244,21 +238,38 @@ curve_df.to_csv(curve_path, index=False)
 print("Curva TL salva em:", curve_path)
 
 # =========================
-# LOAD BASELINE (POR FRACTION)
+# LOAD BASELINE (EPOCHS)
 # =========================
-baseline_path = BASE_DIR / ".." / ".." / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+baseline_path = (
+    BASE_DIR.parent.parent
+    / "results_patu"
+    / f"{MOTOR}"
+    / "graficos"
+    / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
+)
+
 base_df = pd.read_csv(baseline_path)
 
 # =========================
 # PLOT
 # =========================
 plt.figure()
-plt.plot(base_df["epoch"], base_df["best_mape_mean"], 'o-', blabel="Baseline")
-plt.plot(curve_df["epoch"], curve_df["best_mape_mean"], 's--', label="Transfer Learning")
-plt.fill_between(base_df["fraction"], base_df["best_mape_mean"] - base_df["best_mape_std"], base_df["best_mape_mean"] + base_df["best_mape_std"], alpha=0.2)
+
+plt.plot(
+    base_df["epoch"],
+    base_df["best_mape"],
+    label="Baseline",
+)
+
+plt.plot(
+    curve_df["epoch"],
+    curve_df["best_mape"],
+    label="Transfer Learning",
+)
+
 plt.xlabel("Epoch")
 plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — Baseline vs TL (Best Mape)")
+plt.title(f"{MOTOR} — Baseline vs TL (Best MAPE)")
 plt.grid(True)
 plt.legend()
 

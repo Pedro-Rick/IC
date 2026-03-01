@@ -113,6 +113,9 @@ test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 best_mape = float("inf")
 best_model_block = None
 
+best_global_mape = float("inf")
+best_curve_global = None
+
 # =========================
 # MAIN LOOP
 # =========================
@@ -177,12 +180,16 @@ for i in range(len(neurons)):
                 # 🔥 BEST MAPE ATÉ A ÉPOCA
                 if Jou_mape < best_mape:
                     best_mape = Jou_mape
-                    best_model_block = model.linear
 
                 best_mape_so_far.append(best_mape)
 
                 print(f"best_mape = {best_mape}")
                 print("")
+            
+            if best_mape < best_global_mape:
+                best_global_mape = best_mape
+                best_curve_global = best_mape_so_far.copy()
+                best_model_block = model.linear
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds()    
@@ -194,7 +201,7 @@ for i in range(len(neurons)):
 # =========================
 curve_df = pd.DataFrame({
     "epoch": np.arange(1, epochs + 1),
-    "best_mape": best_mape_so_far
+    "best_mape": best_curve_global
 })
 
 SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
