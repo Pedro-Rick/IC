@@ -131,7 +131,7 @@ info = pd.DataFrame(columns=columns)
 # =========================
 # CONFIG TL
 # =========================
-ft_learning_rates = [1e-2, 1e-3, 5e-4, 1e-4]
+ft_learning_rates = [1e-1, 5e-1, 5e-2, 1e-2, 1e-3, 5e-4, 1e-4]
 epochs = 100
 
 fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
