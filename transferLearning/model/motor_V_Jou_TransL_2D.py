@@ -269,7 +269,7 @@ plt.plot(
 
 plt.xlabel("Epoch")
 plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — Baseline vs TL (Best MAPE)")
+plt.title(f"{MOTOR} — Baseline vs TL")
 plt.grid(True)
 plt.legend()
 
