@@ -123,7 +123,7 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 # =========================
 # CONFIG
 # =========================
-ft_learning_rates = [1e-1, 5e-1, 5e-2, 1e-2, 1e-3, 5e-4, 1e-4]
+ft_learning_rates = [1e-1, 5e-1, 5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
 epochs = 100
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
@@ -171,7 +171,7 @@ for lr in ft_learning_rates:
     # ===== TRAIN POR EPOCH =====
     for ep in range(epochs):
 
-        print(f"======= Epoca {ep} =======")
+        print(f"======= Epoca {ep+1} =======")
 
         model.train()
         for X, y in train_loader_full:
