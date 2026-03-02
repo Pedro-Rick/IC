@@ -120,8 +120,10 @@ def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns=info.columns)
     info = pd.concat([info, new_row])
 
-    SAVE_PATH = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info.csv"
-    SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SAVE_PATH = BASE_DIR / ".." / "transL_results" / f"{MOTOR}"
+    SAVE_PATH.mkdir(parents=True, exist_ok=True)
+    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_info.csv"
+
     info.to_csv(SAVE_PATH, index=False)
     return info
 

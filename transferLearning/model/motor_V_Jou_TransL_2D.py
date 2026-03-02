@@ -102,7 +102,7 @@ def register_csv(contents, info):
 
     SAVE_PATH = BASE_DIR / ".." / "transL_results" / f"{MOTOR}"
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
-    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TransL_{MOTOR_TL}_info.csv"
+    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_info.csv"
 
     info.to_csv(SAVE_PATH, index=False)
     return info
