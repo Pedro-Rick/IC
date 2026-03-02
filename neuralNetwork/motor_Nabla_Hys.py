@@ -159,7 +159,6 @@ for i in range(len(neurons)):
 
 
             contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
-
             info = register_csv(contents, info)
 
 #salvando os pesos, camadas e neuronios

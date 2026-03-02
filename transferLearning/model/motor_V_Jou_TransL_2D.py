@@ -70,7 +70,7 @@ class TransLRegressionModel(nn.Module):
 
         # libera últimas 2 camadas
         layers = list(self.pretrained_block.children())
-        for layer in layers[-2:]:
+        for layer in layers[-1:]:
             for p in layer.parameters():
                 p.requires_grad = True
 

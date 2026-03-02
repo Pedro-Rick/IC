@@ -12,6 +12,8 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 
 MOTOR = "V"
 var = "Jou"
+target = ['joule']
+
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR.parent / "dataset" / MOTOR
@@ -90,8 +92,6 @@ info = pd.DataFrame(columns = columns)
 # =========================
 # CONFIG
 # =========================
-target = ['joule']
-
 neurons = np.arange(10, 201, 10)
 layers = [1, 2]
 learning_rates = [0.1, 0.01]
