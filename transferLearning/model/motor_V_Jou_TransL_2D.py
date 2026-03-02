@@ -123,7 +123,7 @@ arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 # =========================
 # CONFIG
 # =========================
-ft_learning_rates = [1e-2, 1e-3, 5e-4, 1e-4]
+ft_learning_rates = [1, 0.5, 0.1, 0.05, 0.01, 0.002, 0.001]
 epochs = 100
 
 columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
