@@ -207,10 +207,10 @@ for lr in ft_learning_rates:
         if Jou_mape < best_mape:
             best_mape = Jou_mape
 
-        print(f"best_mape = {best_mape}")
+        print(f"best_mape = {best_mape} || Jou_mape = {Jou_mape}")
         print("")
 
-        best_mape_so_far.append(best_mape)
+        best_mape_so_far.append(Jou_mape)
 
     if best_mape < best_global_mape:
         best_global_mape = best_mape
