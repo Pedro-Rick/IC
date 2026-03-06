@@ -181,9 +181,9 @@ for i in range(len(neurons)):
                 if Jou_mape < best_mape:
                     best_mape = Jou_mape
 
-                best_mape_so_far.append(best_mape)
+                best_mape_so_far.append(Jou_mape)
 
-                print(f"best_mape = {Jou_mape}")
+                print(f"best_mape = {best_mape} || Jou_mape = {Jou_mape}")
                 print("")
             
             if best_mape < best_global_mape:

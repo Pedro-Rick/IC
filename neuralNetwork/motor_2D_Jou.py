@@ -162,6 +162,9 @@ for i in range(len(neurons)):
                 best_mape = Jou_mape
                 best_model_block = model.linear
 
+                #salvando arq_best_mape
+                
+
 
             contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, time]
 
