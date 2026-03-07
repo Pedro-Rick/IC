@@ -6,15 +6,14 @@ import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, SubsetRandomSampler
+from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-torch.manual_seed(42)
-np.random.seed(42)
-
 MOTOR = "Nabla"
 var = "Jou"
+target = ['joule']
+
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR.parent / "dataset" / MOTOR
@@ -80,30 +79,24 @@ class MotorDataset(Dataset):
 # REGISTER
 # =========================
 def register_csv(contents, info):
-    new_row = pd.DataFrame([contents], columns=info.columns)
+    new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-
+    BASE_DIR = Path(__file__).resolve().parent
     SAVE_PATH = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info.csv"
-    SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
     info.to_csv(SAVE_PATH, index=False)
     return info
 
 columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_mape', 'time'] 
-info = pd.DataFrame(columns=columns)
+info = pd.DataFrame(columns = columns)
 
 # =========================
 # CONFIG
 # =========================
-target = ['joule']
-
 neurons = np.arange(10, 201, 10)
 layers = [1, 2]
 learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
-
-fractions = [0.01, 0.05, 0.1, 0.25, 1.0]
-curve_results = []
 
 # =========================
 # DATASETS
@@ -111,65 +104,62 @@ curve_results = []
 train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
 test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 
+train_loader_full = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-full_indices = np.arange(len(train_dataset))
 
 # =========================
-# MAIN LOOP (POR FRAÇÃO)
+# GLOBAL BEST
 # =========================
-for frac in fractions:
+best_mape = float("inf")
+best_model_block = None
 
-    print("\n====================")
-    print("FRACTION =", frac)
-    print("====================")
+best_global_mape = float("inf")
+best_curve_global = None
 
-    rng = np.random.default_rng(42)
-    subset_size = int(len(train_dataset) * frac)
-    subset_idx = rng.choice(full_indices, subset_size, replace=False)
+# =========================
+# MAIN LOOP
+# =========================
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
-        sampler=SubsetRandomSampler(subset_idx)
-    )
+for i in range(len(neurons)):
+    for j in range(len(layers)):
+        for k in range(len(learning_rates)):
+            
+            print("============")
+            print(f"\nTraining model --- neurons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
+            print("============")
+            print("")
 
-    best_mape_fraction = float("inf")
+            input_dim = len(train_data.columns.drop(target))
+            model = RegressionModel(input_dim, 1, neurons[i], layers[j])
 
-    for n in neurons:
-        for l in layers:
-            for lr in learning_rates:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
 
-                print(f"\nTraining model --- {n}-{l}-{lr}")
+            loss_func = nn.MSELoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
+            start_time = datetime.datetime.now()
 
-                model = RegressionModel(
-                    input_dim=len(train_data.columns.drop(target)),
-                    output_dim=1,
-                    neurons=n,
-                    layers=l
-                )
+            best_mape_so_far = []
+            best_mape = float("inf")
 
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model.to(device)
+            # ===== TRAIN POR EPOCH =====
+            for ep in range(epochs):
 
-                loss_func = nn.MSELoss()
-                optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                print(f"======= Epoca {ep} =======")
 
-                start_time = datetime.datetime.now()
+                model.train()
+                for X, y in train_loader_full:
+                    X, y = X.to(device), y.to(device)
 
-                # ===== TREINO =====
-                for _ in range(epochs):
-                    model.train()
-                    for X, y in train_loader:
-                        X, y = X.to(device), y.to(device)
+                    pred_train = model(X)
+                    loss = loss_func(pred_train, y)
 
-                        pred_train = model(X)
-                        loss = loss_func(pred_train, y)
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    
 
-                        loss.backward()
-                        optimizer.step()
-                        optimizer.zero_grad()
-
-                # ===== TESTE =====
+                # ===== EVAL A CADA EPOCH =====
                 y_pred_list = []
                 y_test_list = []
 
@@ -183,48 +173,61 @@ for frac in fractions:
                 y_pred = torch.cat(y_pred_list).cpu()
                 y_test = torch.cat(y_test_list).cpu()
 
-                Jou_score = r2_score(y_test.numpy(), y_pred.numpy())
-                Jou_mse = mean_squared_error(y_test.numpy(), y_pred.numpy())
+                Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+                Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
                 Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-                # BEST DA FRAÇÃO
-                if Jou_mape < best_mape_fraction:
-                    best_mape_fraction = Jou_mape
+                # 🔥 BEST MAPE ATÉ A ÉPOCA
+                if Jou_mape < best_mape:
+                    best_mape = Jou_mape
 
-                # salvar info só para 100%
-                if frac == 1.0:
-                    end_time = datetime.datetime.now()
-                    elapsed_time = (end_time - start_time).total_seconds()
-                    contents = [n, l, lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
-                    info = register_csv(contents, info)
+                best_mape_so_far.append(Jou_mape)
 
-    curve_results.append({
-        "fraction": frac,
-        "best_mape": best_mape_fraction
-    })
+                print(f"best_mape = {best_mape} || Jou_mape = {Jou_mape}")
+                print("")
+            
+            if best_mape < best_global_mape:
+                best_global_mape = best_mape
+                best_curve_global = best_mape_so_far.copy()
+                best_model_block = model.linear
+
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds()    
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+            info = register_csv(contents, info)
 
 # =========================
 # SAVE CURVE
 # =========================
-curve_df = pd.DataFrame(curve_results)
+curve_df = pd.DataFrame({
+    "epoch": np.arange(1, epochs + 1),
+    "mape": best_curve_global
+})
 
-SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_{MOTOR}_{var}.csv"
+SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
 SAVE_CURVE.parent.mkdir(parents=True, exist_ok=True)
 curve_df.to_csv(SAVE_CURVE, index=False)
-
 print("\nCurva salva em:", SAVE_CURVE)
 
 # =========================
 # PLOT
 # =========================
 plt.figure()
-plt.plot(curve_df["fraction"], curve_df["best_mape"], 'o-', label="Baseline")
-plt.xscale("log")
-plt.xlabel("Fração dos dados de treino")
-plt.ylabel("Best MAPE")
-plt.title("Baseline — Best MAPE vs Fração")
+plt.plot(curve_df["epoch"], curve_df["mape"], label="Baseline")
+plt.xlabel("Epoch")
+plt.ylabel("MAPE")
+plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
 plt.grid(True)
 plt.legend()
 plt.show()
+
+# =========================
+# SAVE BEST WEIGHTS
+# =========================
+SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
+SAVE_DIR.mkdir(parents=True, exist_ok=True)
+
+SAVE_PATH = SAVE_DIR / f"pesos_V_{var}.pt"
+torch.save(best_model_block, SAVE_PATH)
 
 print("the end")

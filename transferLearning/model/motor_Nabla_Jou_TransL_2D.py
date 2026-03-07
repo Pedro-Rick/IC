@@ -10,14 +10,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "V"
+MOTOR = "Nabla"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
 
 BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent.parent
-PATH = ROOT_DIR / "dataset" / MOTOR
+IC_BASE_DIR = BASE_DIR.parent.parent
+PATH = IC_BASE_DIR / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
@@ -42,42 +42,59 @@ test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
 # =========================
-# MODEL TL
+# TL_ARQ_WEIGHTS_MODEL
 # =========================
-class TransLRegressionModel(nn.Module):
-    def __init__(self, input_dim, peso_path):
+class TLRegressionModel(nn.Module):
+
+    def __init__(self, input_dim, peso_path, unlock_layers):
         super().__init__()
 
-        full_model = torch.load(
-            peso_path,
-            map_location="cpu",
-            weights_only=False
-        )
-
+        full_model = torch.load(peso_path, map_location="cpu", weights_only=False)
         self.pretrained_block = full_model
 
-        first_linear = self.pretrained_block[0]
-        pre_input_dim = first_linear.in_features
+        pre_input_dim = self.pretrained_block[0].in_features
 
         self.adapter = nn.Sequential(
             nn.Linear(input_dim, pre_input_dim),
             nn.ReLU()
         )
 
-        # congela tudo
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
 
-        # libera últimas 2 camadas
-        layers = list(self.pretrained_block.children())
-        for layer in layers[-1:]:
+        for layer in list(self.pretrained_block.children())[-(unlock_layers):]:
             for p in layer.parameters():
                 p.requires_grad = True
 
     def forward(self, x):
+
         x = self.adapter(x)
         x = self.pretrained_block(x)
         return x
+    
+# =========================
+# TL_ARQ_MODEL
+# =========================
+class RegressionModel(nn.Module):
+
+    def __init__(self, input_dim, output_dim, neurons=5, layers=1):
+        super().__init__()
+
+        modules = []
+
+        modules.append(nn.Linear(input_dim, neurons))
+        modules.append(nn.ReLU())
+
+        for _ in range(layers):
+            modules.append(nn.Linear(neurons, neurons))
+            modules.append(nn.ReLU())
+
+        modules.append(nn.Linear(neurons, output_dim))
+
+        self.linear = nn.Sequential(*modules)
+
+    def forward(self, x):
+        return self.linear(x)
 
 # =========================
 # DATASET
@@ -96,16 +113,34 @@ class MotorDataset(Dataset):
 # =========================
 # REGISTER
 # =========================
-def register_csv(contents, info):
-    new_row = pd.DataFrame([contents], columns=info.columns)
-    info = pd.concat([info, new_row])
+def register_csv(contents, info, arq_name):
 
-    SAVE_PATH = BASE_DIR / ".." / "transL_results" / f"{MOTOR}"
-    SAVE_PATH.mkdir(parents=True, exist_ok=True)
-    SAVE_PATH = SAVE_PATH / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_info.csv"
+    new_row = pd.DataFrame([contents], columns=info.columns)
+    info = pd.concat([info, new_row], ignore_index=True)
+
+    SAVE_PATH = IC_BASE_DIR / arq_name
+
+    # cria só a pasta
+    SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     info.to_csv(SAVE_PATH, index=False)
+
     return info
+
+# =========================
+# BEST_ARQ_TL
+# =========================
+def get_best_mape_row(parameter):
+    
+    csv_path = IC_BASE_DIR / "results_patu" / f"{MOTOR_TL}" / f"motor_{MOTOR_TL}_{var}_info.csv"
+    df = pd.read_csv(csv_path)
+
+    idx = df[f"{var}_mape"].idxmin()
+    best_row = df.loc[idx]
+
+    b_parameter = best_row[parameter]
+    
+    return b_parameter
 
 # =========================
 # DATA LOADERS
@@ -118,15 +153,19 @@ test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 train_loader_full = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-arquivo = BASE_DIR / ".." / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
+ARQ_PESOS = IC_BASE_DIR / "transferLearning" / "data_pesos" / f"pesos_{MOTOR_TL}_{var}.pt"
 
 # =========================
 # CONFIG
 # =========================
-ft_learning_rates = [1e-1, 5e-1, 5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
+unlock_layers = []
 epochs = 100
+models = ["TLap", "TLa"]
+b_TL_lr = float(get_best_mape_row("learn_rate"))
+b_TL_neurons = int(get_best_mape_row("neurons"))
+b_TL_layers = int(get_best_mape_row("layers"))
 
-columns = ["lr", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
+columns = ["neurons", "layers", "lr","epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
 info = pd.DataFrame(columns=columns)
 
 # =========================
@@ -144,15 +183,32 @@ best_global_mape = float("inf")
 best_curve_global = None
 
 all_curves = []
+plt.figure()
 
-for lr in ft_learning_rates:
 
-    print(f"\nTraining model --- lr={lr}")
+# ===== TRAIN POR EPOCH =====
+for model_type in models:
 
-    model = TransLRegressionModel(
-        input_dim=len(train_data.columns.drop(target)),
-        peso_path=arquivo
-    )
+    if model_type == "TLa":
+        model = RegressionModel(input_dim=len(train_data.columns.drop(target)), output_dim=1, neurons=b_TL_neurons, layers=b_TL_layers)
+        
+        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_info.csv"
+
+        curve_name_csv = f"curve_TL_epochs_{MOTOR}_{var}_arq.csv"
+        curve_name = "TL_arq"
+
+    if model_type == "TLap":
+        
+        model = TLRegressionModel(input_dim=len(train_data.columns.drop(target)), peso_path=ARQ_PESOS, unlock_layers=1)
+
+        SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_wei_info.csv"
+
+        curve_name_csv = f"curve_TL_epochs_{MOTOR}_{var}_arq_wei.csv"
+        curve_name = "TL_arq_weitghs"
+
+    print("==========")
+    print(f"modelo: {model_type}")
+    print("==========")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -160,7 +216,7 @@ for lr in ft_learning_rates:
     loss_func = nn.MSELoss()
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, model.parameters()),
-        lr=lr
+        lr=b_TL_lr
     )
 
     start_time = datetime.datetime.now()
@@ -168,7 +224,6 @@ for lr in ft_learning_rates:
     best_mape = float("inf")
     best_mape_so_far = []
 
-    # ===== TRAIN POR EPOCH =====
     for ep in range(epochs):
 
         print(f"======= Epoca {ep+1} =======")
@@ -207,76 +262,73 @@ for lr in ft_learning_rates:
         if Jou_mape < best_mape:
             best_mape = Jou_mape
 
-        print(f"best_mape = {best_mape}")
+        print(f"best_mape = {best_mape} || Jou_mape = {Jou_mape}")
         print("")
 
-        best_mape_so_far.append(best_mape)
+        best_mape_so_far.append(Jou_mape)
 
     if best_mape < best_global_mape:
         best_global_mape = best_mape
         best_curve_global = best_mape_so_far.copy()
-        best_model_block = model.pretrained_block
+
+        if model_type == "TLap":
+            best_model_block = model.pretrained_block
 
     end_time = datetime.datetime.now()
     elapsed_time = (end_time - start_time).total_seconds()
 
-    contents = [lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
-    info = register_csv(contents, info)
+    contents = [b_TL_neurons, b_TL_layers, b_TL_lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+    info = register_csv(contents, info, SAVE_CONTS)
 
-# =========================
-# SAVE CURVE
-# =========================
-curve_df = pd.DataFrame({
-    "epoch": np.arange(1, epochs + 1),
-    "best_mape": best_curve_global,
-})
-curve_path = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
-curve_path.mkdir(parents=True, exist_ok=True)
-curve_path = curve_path / f"curve_TL_epochs_{MOTOR}_{var}.csv"
+    # =========================
+    # SAVE CURVE
+    # =========================
+    curve_df = pd.DataFrame({
+        "epoch": np.arange(1, epochs + 1),
+        "mape": best_curve_global,
+    })
 
-curve_df.to_csv(curve_path, index=False)
-print("Curva TL salva em:", curve_path)
+    curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos" / curve_name_csv
+
+    curve_path.parent.mkdir(parents=True, exist_ok=True)
+    curve_df.to_csv(curve_path, index=False)
+    print("Curva TL salva em:", curve_path)
+
+    # =========================
+    # PLOT 
+    # =========================
+    plt.plot(
+    curve_df["epoch"],
+    curve_df["mape"],
+    label= curve_name,
+    )
 
 # =========================
 # LOAD BASELINE (EPOCHS)
 # =========================
-baseline_path = (
-    BASE_DIR.parent.parent
-    / "results_patu"
-    / f"{MOTOR}"
-    / "graficos"
-    / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
-)
-
+baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
 base_df = pd.read_csv(baseline_path)
 
 # =========================
-# PLOT
+# PLOT BASELINE
 # =========================
-plt.figure()
 
 plt.plot(
     base_df["epoch"],
-    base_df["best_mape"],
+    base_df["mape"],
     label="Baseline",
 )
 
-plt.plot(
-    curve_df["epoch"],
-    curve_df["best_mape"],
-    label="Transfer Learning",
-)
-
 plt.xlabel("Epoch")
-plt.ylabel("Best MAPE")
-plt.title(f"{MOTOR} — Baseline vs TL")
+plt.ylabel("MAPE")
+plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
 plt.grid(True)
 plt.legend()
 
-save_fig = BASE_DIR / ".." / "transL_results" / f"{MOTOR}" / "graficos"
+save_fig =IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos"
 save_fig.mkdir(parents=True, exist_ok=True)
 
-plt.savefig(save_fig / f"baseline_{MOTOR}_vs_{MOTOR}_{var}_TL_{MOTOR_TL}.png")
+plt.savefig(save_fig / f"baseline_TLa_TLap_{MOTOR}_TL_{MOTOR_TL}_{var}.png")
 plt.show()
 
 print("\nFIM")
