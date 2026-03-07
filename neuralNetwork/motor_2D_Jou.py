@@ -78,8 +78,8 @@ def register_csv(contents, info):
 
 target = ['joule']
 
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
+neurons = np.arange(350, 400 + 1, 10)
+layers = [1, 2, 5, 10]
 learning_rates = [0.1, 0.01]
 epochs = 100
 
@@ -108,10 +108,11 @@ for i in range(len(neurons)):
             print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
 
             input_dim = len(train_data.columns.drop(target))
-
             output_dim = 1
 
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
+            neuron_per_layer = i/j
+
+            model = RegressionModel(input_dim, output_dim, neuron_per_layer, layers[j])
             
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model.to(device)
