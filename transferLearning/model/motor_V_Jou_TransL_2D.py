@@ -207,7 +207,7 @@ for model_type in models:
         curve_name = "TL_arq_weitghs"
 
     print("==========")
-    print(f"modelo {models[model_type]}")
+    print(f"modelo: {model_type}")
     print("==========")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
