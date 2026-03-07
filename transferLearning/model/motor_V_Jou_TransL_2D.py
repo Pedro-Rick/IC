@@ -114,13 +114,17 @@ class MotorDataset(Dataset):
 # REGISTER
 # =========================
 def register_csv(contents, info, arq_name):
-    new_row = pd.DataFrame([contents], columns=info.columns)
-    info = pd.concat([info, new_row])
 
-    SAVE_PATH = IC_BASE_DIR/ arq_name
-    SAVE_PATH.mkdir(parents=True, exist_ok=True)
+    new_row = pd.DataFrame([contents], columns=info.columns)
+    info = pd.concat([info, new_row], ignore_index=True)
+
+    SAVE_PATH = IC_BASE_DIR / arq_name
+
+    # cria só a pasta
+    SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     info.to_csv(SAVE_PATH, index=False)
+
     return info
 
 # =========================
