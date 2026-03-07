@@ -321,7 +321,7 @@ plt.plot(
 
 plt.xlabel("Epoch")
 plt.ylabel("MAPE")
-plt.title(f"{MOTOR} — Baseline vs TLa vs TLap")
+plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
 plt.grid(True)
 plt.legend()
 

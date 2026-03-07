@@ -201,7 +201,7 @@ for i in range(len(neurons)):
 # =========================
 curve_df = pd.DataFrame({
     "epoch": np.arange(1, epochs + 1),
-    "best_mape": best_curve_global
+    "mape": best_curve_global
 })
 
 SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
@@ -213,10 +213,10 @@ print("\nCurva salva em:", SAVE_CURVE)
 # PLOT
 # =========================
 plt.figure()
-plt.plot(curve_df["epoch"], curve_df["best_mape"], label="Baseline")
+plt.plot(curve_df["epoch"], curve_df["mape"], label="Baseline")
 plt.xlabel("Epoch")
-plt.ylabel("Best MAPE")
-plt.title("Baseline — Best MAPE vs Epochs")
+plt.ylabel("MAPE")
+plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
 plt.grid(True)
 plt.legend()
 plt.show()
