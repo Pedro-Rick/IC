@@ -206,6 +206,10 @@ for model_type in models:
         curve_name_csv = f"curve_TL_epochs_{MOTOR}_{var}_arq_wei.csv"
         curve_name = "TL_arq_weitghs"
 
+    print("==========")
+    print(f"modelo {models[model_type]}")
+    print("==========")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
