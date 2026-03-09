@@ -133,7 +133,7 @@ for i in range(len(neurons)):
             print("============")
             print("")
 
-            neuron_per_layer = i/j
+            neuron_per_layer = neurons[i]/layers[j]
 
             input_dim = len(train_data.columns.drop(target))
             model = RegressionModel(input_dim, 1, neuron_per_layer, layers[j])
@@ -170,7 +170,7 @@ for i in range(len(neurons)):
                 y_test_list = []
 
                 model.eval()
-                
+
                 with torch.no_grad():
                     for X, y in test_loader:
                         X, y = X.to(device), y.to(device)
