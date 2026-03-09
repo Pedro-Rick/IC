@@ -208,9 +208,11 @@ b_TL_lr = float(get_best_mape_row("learn_rate"))
 b_TL_neurons = int(get_best_mape_row("neurons"))
 b_TL_layers = int(get_best_mape_row("layers"))
 
+neurons_max= int(b_TL_neurons * b_TL_layers)
+
 plt.figure()
 
-# =========================
+# ========================
 # MAIN LOOP
 # =========================
 

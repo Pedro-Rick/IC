@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "V"
+MOTOR = "Nabla"
 MOTOR_TL = "2D"
 var = "Hys"
 target = ["hysteresis"]
