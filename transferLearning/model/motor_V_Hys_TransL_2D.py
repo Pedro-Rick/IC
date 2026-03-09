@@ -64,10 +64,13 @@ class TLRegressionModel(nn.Module):
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
 
+        layers = [layer for layer in self.pretrained_block if len(list(layer.parameters())) > 0]
+
         if unlock_layers > 0:
-            for layer in list(self.pretrained_block.children())[-unlock_layers:]:
+            for layer in layers[-unlock_layers:]:
                 for p in layer.parameters():
                     p.requires_grad = True
+
 
     def forward(self, x):
 
