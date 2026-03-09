@@ -92,8 +92,8 @@ info = pd.DataFrame(columns = columns)
 # =========================
 # CONFIG
 # =========================
-neurons = np.arange(10, 201, 10)
-layers = [1, 2]
+neurons = np.arange(350, 400 + 1, 10)
+layers = [1, 2, 5, 10]
 learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
@@ -116,6 +116,10 @@ best_model_block = None
 best_global_mape = float("inf")
 best_curve_global = None
 
+best_state_dict = None
+best_neurons = None
+best_layers = None
+best_lr = None
 # =========================
 # MAIN LOOP
 # =========================
@@ -129,8 +133,10 @@ for i in range(len(neurons)):
             print("============")
             print("")
 
+            neuron_per_layer = i/j
+
             input_dim = len(train_data.columns.drop(target))
-            model = RegressionModel(input_dim, 1, neurons[i], layers[j])
+            model = RegressionModel(input_dim, 1, neuron_per_layer, layers[j])
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model.to(device)
@@ -164,6 +170,7 @@ for i in range(len(neurons)):
                 y_test_list = []
 
                 model.eval()
+                
                 with torch.no_grad():
                     for X, y in test_loader:
                         X, y = X.to(device), y.to(device)
@@ -227,7 +234,7 @@ plt.show()
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-SAVE_PATH = SAVE_DIR / f"pesos_V_{var}.pt"
+SAVE_PATH = SAVE_DIR / f"pesos_{MOTOR}_{var}.pt"
 torch.save(best_model_block, SAVE_PATH)
 
 print("the end")

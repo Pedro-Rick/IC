@@ -64,9 +64,10 @@ class TLRegressionModel(nn.Module):
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
 
-        for layer in list(self.pretrained_block.children())[-unlock_layers:]:
-            for p in layer.parameters():
-                p.requires_grad = True
+        if unlock_layers > 0:
+            for layer in list(self.pretrained_block.children())[-unlock_layers:]:
+                for p in layer.parameters():
+                    p.requires_grad = True
 
     def forward(self, x):
 
@@ -315,7 +316,7 @@ for model_type in models:
 
         curve_to_plot = best_curve_global
 
-        curve_name = f"TL_arq_weights_unlock{best_unlock}"
+        curve_name = f"TL_arq_weights_unlock_{best_unlock}"
         curve_name_csv = f"curve_TL_epochs_{MOTOR}_{var}_arq_wei.csv"
    
 
@@ -433,24 +434,26 @@ for model_type in models:
 # LOAD BASELINE
 # =========================
 
-baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
+#baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
 
-base_df = pd.read_csv(baseline_path)
+#base_df = pd.read_csv(baseline_path)
 
 # =========================
 # PLOT BASELINE
 # =========================
 
-plt.plot(
-    base_df["epoch"],
-    base_df["mape"],
-    label="Baseline"
-)
+#plt.plot(
+#    base_df["epoch"],
+#    base_df["mape"],
+#    label="Baseline"
+#)
 
 plt.xlabel("Epoch")
 plt.ylabel("MAPE")
 
-plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
+#plotar c baseline
+# plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap") 
+plt.title(f"{MOTOR}_{var} — TLa vs TLap")
 
 plt.grid(True)
 plt.legend()
@@ -459,7 +462,7 @@ save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "grafi
 
 save_fig.mkdir(parents=True,exist_ok=True)
 
-plt.savefig(save_fig / f"baseline_TLa_TLap_{MOTOR}_TL_{MOTOR_TL}_{var}.png")
+plt.savefig(save_fig / f"TLa_vs_TLap-{MOTOR}_TL_{MOTOR_TL}_{var}.png")
 
 plt.show()
 

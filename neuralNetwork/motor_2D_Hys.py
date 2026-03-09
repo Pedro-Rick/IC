@@ -1,24 +1,29 @@
 import numpy as np
 import pandas as pd
-import datetime
 from pathlib import Path
+import datetime
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, TensorDataset, SubsetRandomSampler
+from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
 MOTOR = "2D"
 var = "Hys"
+target = ['hysteresis']
+
 
 BASE_DIR = Path(__file__).resolve().parent
-
 PATH = BASE_DIR.parent / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
 TEST_FILE  = "_all_scaled_test.csv"
 
+# =========================
+# LOAD DATA
+# =========================
 train_data = pd.DataFrame()
 
 train_data = pd.concat([train_data,pd.read_csv(PATH / f"idiq{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
@@ -26,7 +31,6 @@ train_data["speed"] = pd.read_csv(PATH / f"speed{TRAIN_FILE}")["N"]
 train_data = pd.concat([train_data,pd.read_csv(PATH / f"xgeom{TRAIN_FILE}").drop(columns="Unnamed: 0")],axis=1)
 train_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TRAIN_FILE}")["total"]
 train_data["joule"]      = pd.read_csv(PATH / f"joule{TRAIN_FILE}")["total"]
-
 
 test_data = pd.DataFrame()
 
@@ -36,38 +40,44 @@ test_data = pd.concat([test_data,pd.read_csv(PATH / f"xgeom{TEST_FILE}").drop(co
 test_data["hysteresis"] = pd.read_csv(PATH / f"hysteresis{TEST_FILE}")["total"]
 test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
-
+# =========================
+# MODEL
+# =========================
 class RegressionModel(nn.Module):
-
-    def __init__(self, input_dim, output_dim, neurons = 5, layers = 1):
+    def __init__(self, input_dim, output_dim, neurons=5, layers=1):
         super().__init__()
 
         modules = []
-
         modules.append(nn.Linear(input_dim, neurons))
         modules.append(nn.ReLU())
-        for i in range(layers):
+
+        for _ in range(layers):
             modules.append(nn.Linear(neurons, neurons))
             modules.append(nn.ReLU())
-        modules.append(nn.Linear(neurons, output_dim))
 
+        modules.append(nn.Linear(neurons, output_dim))
         self.linear = nn.Sequential(*modules)
 
     def forward(self, x):
-        x = self.linear(x)
-        return x
+        return self.linear(x)
 
+# =========================
+# DATASET
+# =========================
 class MotorDataset(Dataset):
     def __init__(self, X, y):
         self.X = torch.tensor(X.values, dtype=torch.float32)
         self.y = torch.tensor(y.values, dtype=torch.float32)
-    
+
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
 
+# =========================
+# REGISTER
+# =========================
 def register_csv(contents, info):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
@@ -76,97 +86,155 @@ def register_csv(contents, info):
     info.to_csv(SAVE_PATH, index=False)
     return info
 
-target = ['hysteresis']
-
-neurons = np.arange(10, 200 + 1, 10)
-layers = [1, 2]
-learning_rates = [0.1, 0.01]
-epochs = 100
-
-
-train_dataset = MotorDataset(train_data.drop(columns = target), train_data[target])
-test_dataset = MotorDataset(test_data.drop(columns = target), test_data[target])
-
-BATCH_SIZE = 256
-
-train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
-test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True)
-
 columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_mape', 'time'] 
 info = pd.DataFrame(columns = columns)
 
+# =========================
+# CONFIG
+# =========================
+neurons = np.arange(350, 400 + 1, 10)
+layers = [1, 2, 5, 10]
+learning_rates = [0.1, 0.01]
+epochs = 100
+BATCH_SIZE = 256
+
+# =========================
+# DATASETS
+# =========================
+train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
+test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
+
+train_loader_full = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+# =========================
+# GLOBAL BEST
+# =========================
 best_mape = float("inf")
+best_model_block = None
+
+best_global_mape = float("inf")
+best_curve_global = None
+
 best_state_dict = None
 best_neurons = None
 best_layers = None
 best_lr = None
-
+# =========================
+# MAIN LOOP
+# =========================
 
 for i in range(len(neurons)):
     for j in range(len(layers)):
         for k in range(len(learning_rates)):
-            print(f"\nTraining model --- {neurons[i]}-{layers[j]}-{learning_rates[k]}-{epochs}\n")
+            
+            print("============")
+            print(f"\nTraining model --- neurons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
+            print("============")
+            print("")
+
+            neuron_per_layer = i/j
 
             input_dim = len(train_data.columns.drop(target))
+            model = RegressionModel(input_dim, 1, neuron_per_layer, layers[j])
 
-            output_dim = 1
-
-            model = RegressionModel(input_dim, output_dim, neurons[i], layers[j])
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
 
             loss_func = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr = learning_rates[k])
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
+            start_time = datetime.datetime.now()
 
-            losses = torch.zeros(epochs)
+            best_mape_so_far = []
+            best_mape = float("inf")
 
-            for a in range(epochs):
+            # ===== TRAIN POR EPOCH =====
+            for ep in range(epochs):
+
+                print(f"======= Epoca {ep} =======")
+
                 model.train()
-                for X, y in train_loader:
+                for X, y in train_loader_full:
+                    X, y = X.to(device), y.to(device)
+
                     pred_train = model(X)
                     loss = loss_func(pred_train, y)
 
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
+                    
 
-            time = datetime.datetime.now()
+                # ===== EVAL A CADA EPOCH =====
+                y_pred_list = []
+                y_test_list = []
 
-            print(f"\tFinished training model at {time}.\n")
+                model.eval()
+                
+                with torch.no_grad():
+                    for X, y in test_loader:
+                        X, y = X.to(device), y.to(device)
+                        y_pred_list.append(model(X))
+                        y_test_list.append(y)
 
-            y_pred_list = []
-            y_test_list = []
+                y_pred = torch.cat(y_pred_list).cpu()
+                y_test = torch.cat(y_test_list).cpu()
 
-            model.eval()
+                Hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+                Hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
+                Hys_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-            with torch.no_grad():
-                for X, y in test_loader:
-                    pred_test = model(X)
-                    y_pred_list.append(pred_test)
-                    y_test_list.append(y)
+                # 🔥 BEST MAPE ATÉ A ÉPOCA
+                if Hys_mape < best_mape:
+                    best_mape = Hys_mape
 
-            y_pred = torch.cat(y_pred_list)
-            y_test = torch.cat(y_test_list)
+                best_mape_so_far.append(Hys_mape)
 
-            hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-            hys_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
-            hys_mape = mean_absolute_percentage_error(y_test.detach().numpy(), y_pred.detach().numpy())
-
-            print(f"\tSpecs:")
-            print(f"\t\thys_score: {hys_score}, hys_mse: {hys_mse}, hys_mape: {hys_mape}.\n")
-
-            if hys_mape < best_mape:
-                best_mape = hys_mape
+                print(f"best_mape = {best_mape} || Hys_mape = {Hys_mape}")
+                print("")
+            
+            if best_mape < best_global_mape:
+                best_global_mape = best_mape
+                best_curve_global = best_mape_so_far.copy()
                 best_model_block = model.linear
 
-
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, hys_score, hys_mse, hys_mape, time]
-
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds()    
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, Hys_score, Hys_mse, Hys_mape, elapsed_time]
             info = register_csv(contents, info)
 
-#salvando os pesos, camadas e neuronios
+# =========================
+# SAVE CURVE
+# =========================
+curve_df = pd.DataFrame({
+    "epoch": np.arange(1, epochs + 1),
+    "mape": best_curve_global
+})
+
+SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
+SAVE_CURVE.parent.mkdir(parents=True, exist_ok=True)
+curve_df.to_csv(SAVE_CURVE, index=False)
+print("\nCurva salva em:", SAVE_CURVE)
+
+# =========================
+# PLOT
+# =========================
+plt.figure()
+plt.plot(curve_df["epoch"], curve_df["mape"], label="Baseline")
+plt.xlabel("Epoch")
+plt.ylabel("MAPE")
+plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# =========================
+# SAVE BEST WEIGHTS
+# =========================
 SAVE_DIR = BASE_DIR.parent / "transferLearning" / "data_pesos"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 SAVE_PATH = SAVE_DIR / f"pesos_{MOTOR}_{var}.pt"
 torch.save(best_model_block, SAVE_PATH)
 
-print(f"the end")
+print("the end")
