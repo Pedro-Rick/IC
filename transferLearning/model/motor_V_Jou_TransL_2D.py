@@ -14,6 +14,7 @@ MOTOR = "V"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
+curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
 IC_BASE_DIR = BASE_DIR.parent.parent
@@ -60,9 +61,6 @@ class TLRegressionModel(nn.Module):
             nn.Linear(input_dim, pre_input_dim),
             nn.ReLU()
         )
-
-        for p in self.pretrained_block.parameters():
-            p.requires_grad = False
 
         for p in self.pretrained_block.parameters():
             p.requires_grad = False
@@ -211,30 +209,40 @@ b_TL_lr = float(get_best_mape_row("learn_rate"))
 b_TL_neurons = int(get_best_mape_row("neurons"))
 b_TL_layers = int(get_best_mape_row("layers"))
 
+neurons_max= int(b_TL_neurons * b_TL_layers)
+
 plt.figure()
 
-# =========================
+# ========================
 # MAIN LOOP
 # =========================
+
+results_curves = {}
 
 for model_type in models:
 
     print("==========")
     print(f"modelo: {model_type}")
     print("==========")
-
+  
     # =========================
     # TL WITH WEIGHTS
     # =========================
 
     if model_type == "TLap":
 
-        best_global_mape = float("inf")
-        best_curve_global = None
+        best_epoch_mape = float("inf")
+        best_epoch_rmse = float("inf")
+
+        best_curve_mape = None
+        best_curve_rmse = None
         best_unlock = None
 
         SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_wei_info.csv"
-        columns = ["neurons", "layers", "lr", "unlock_layers", "epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
+
+        columns = ["neurons","layers","lr","unlock_layers","epochs",
+                   f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
+
         info = pd.DataFrame(columns=columns)
 
         for unlock in unlock_layers_list:
@@ -257,8 +265,8 @@ for model_type in models:
                 lr=b_TL_lr
             )
 
-            best_mape = float("inf")
             mape_curve = []
+            rmse_curve = []
 
             start_time = datetime.datetime.now()
 
@@ -294,36 +302,37 @@ for model_type in models:
                 y_pred=torch.cat(y_pred_list).cpu()
                 y_test=torch.cat(y_test_list).cpu()
 
-                Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+                Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+                Jou_rmse = np.sqrt(Jou_mse)
+                Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
                 mape_curve.append(Jou_mape)
+                rmse_curve.append(Jou_rmse)
 
-                if Jou_mape < best_mape:
-                    best_mape = Jou_mape
-
-            if best_mape < best_global_mape:
-
-                best_global_mape = best_mape
-                best_curve_global = mape_curve.copy()
+            # comparação usando epoch final
+            if mape_curve[-1] < best_epoch_mape:
+                best_epoch_mape = mape_curve[-1]
+                best_curve_mape = mape_curve.copy()
                 best_unlock = unlock
 
+            if rmse_curve[-1] < best_epoch_rmse:
+                best_epoch_rmse = rmse_curve[-1]
+                best_curve_rmse = rmse_curve.copy()
+
             Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
-            Jou_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
-            Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds()
 
-            contents = [b_TL_neurons, b_TL_layers, b_TL_lr, unlock, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+            contents = [b_TL_neurons,b_TL_layers,b_TL_lr,unlock,epochs,
+                        Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
+
             info = register_csv(contents, info, SAVE_CONTS)
 
         print(f"\nMelhor unlock_layers = {best_unlock}")
 
-        curve_to_plot = best_curve_global
-
-        curve_name = f"TL_arq_weights_unlock_{best_unlock}"
-        curve_name_csv = f"curve_TL_epochs_{MOTOR}_{var}_arq_wei.csv"
-   
+        results_curves["TLap_MAPE"] = best_curve_mape
+        results_curves["TLap_RMSE"] = best_curve_rmse
 
     # =========================
     # TL ARCHITECTURE
@@ -342,10 +351,10 @@ for model_type in models:
         model.to(device)
 
         loss_func = nn.MSELoss()
-
         optimizer = torch.optim.Adam(model.parameters(), lr=b_TL_lr)
 
-        best_mape_so_far = []
+        mape_curve = []
+        rmse_curve = []
 
         start_time = datetime.datetime.now()
 
@@ -381,94 +390,78 @@ for model_type in models:
             y_pred=torch.cat(y_pred_list).cpu()
             y_test=torch.cat(y_test_list).cpu()
 
-            Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
             Jou_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
+            Jou_rmse=np.sqrt(Jou_mse)
             Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-            best_mape_so_far.append(Jou_mape)
-            
+            mape_curve.append(Jou_mape)
+            rmse_curve.append(Jou_rmse)
 
-        curve_to_plot = best_mape_so_far
-
-        curve_name="TL_arq"
-        curve_name_csv=f"curve_TL_epochs_{MOTOR}_{var}_arq.csv"
+        results_curves["TLa_MAPE"] = mape_curve
+        results_curves["TLa_RMSE"] = rmse_curve
 
         SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_info.csv"
 
         end_time = datetime.datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
 
-        columns = ["neurons", "layers", "lr","epochs", f"{var}_score", f"{var}_mse", f"{var}_mape", "time"]
+        columns = ["neurons","layers","lr","epochs",
+                   f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
+
         info = pd.DataFrame(columns=columns)
-        contents = [b_TL_neurons, b_TL_layers, b_TL_lr, epochs, Jou_score, Jou_mse, Jou_mape, elapsed_time]
+
+        contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs,
+                    Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
+
         info = register_csv(contents, info, SAVE_CONTS)
 
-        
-
-    # =========================
-    # SAVE CURVE
-    # =========================
-
-    curve_df=pd.DataFrame({
-
-        "epoch":np.arange(1,epochs+1),
-        "mape":curve_to_plot
-
-    })
-
-    curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos" / curve_name_csv
-
-    curve_path.parent.mkdir(parents=True,exist_ok=True)
-
-    curve_df.to_csv(curve_path,index=False)
-
-    print("Curva TL salva em:",curve_path)
-
-    # =========================
-    # PLOT
-    # =========================
-
-    plt.plot(
-        curve_df["epoch"],
-        curve_df["mape"],
-        label=curve_name
-    )
-
 
 # =========================
-# LOAD BASELINE
+# SAVE + PLOT CURVES
 # =========================
 
-#baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}.csv"
+for curve_var in curve_parameters:
 
-#base_df = pd.read_csv(baseline_path)
+    plt.figure()
 
-# =========================
-# PLOT BASELINE
-# =========================
+    for name,curve in results_curves.items():
 
-#plt.plot(
-#    base_df["epoch"],
-#    base_df["mape"],
-#    label="Baseline"
-#)
+        if curve_var not in name:
+            continue
 
-plt.xlabel("Epoch")
-plt.ylabel("MAPE")
+        curve_df=pd.DataFrame({
+            "epoch":np.arange(1,epochs+1),
+            curve_var.lower():curve
+        })
 
-#plotar c baseline
-# plt.title(f"{MOTOR}_{var} — Baseline vs TLa vs TLap") 
-plt.title(f"{MOTOR}_{var} — TLa vs TLap")
+        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
 
-plt.grid(True)
-plt.legend()
+        curve_path.parent.mkdir(parents=True,exist_ok=True)
 
-save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos"
+        curve_df.to_csv(curve_path,index=False)
 
-save_fig.mkdir(parents=True,exist_ok=True)
+        print("Curva TL salva em:",curve_path)
 
-plt.savefig(save_fig / f"TLa_vs_TLap-{MOTOR}_TL_{MOTOR_TL}_{var}.png")
+        plt.plot(
+            curve_df["epoch"],
+            curve_df[curve_var.lower()],
+            label=name
+        )
 
-plt.show()
+    plt.xlabel("Epoch")
+    plt.ylabel(curve_var)
+
+    plt.title(f"{MOTOR}_{var} — TLa vs TLap - {curve_var}")
+
+    plt.grid(True)
+    plt.legend()
+
+    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos"
+
+    save_fig.mkdir(parents=True,exist_ok=True)
+
+    plt.savefig(save_fig / f"TLa_vs_TLap-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
+
+    plt.show()
 
 print("\nFIM")
