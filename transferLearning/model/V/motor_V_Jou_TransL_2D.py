@@ -238,8 +238,7 @@ for model_type in models:
         best_curve_rmse = None
         best_unlock = None
 
-        SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_wei_info.csv"
-
+        SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
         columns = ["neurons","layers","lr","unlock_layers","epochs",
                    f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
 
@@ -400,7 +399,7 @@ for model_type in models:
         results_curves["TLa_MAPE"] = mape_curve
         results_curves["TLa_RMSE"] = rmse_curve
 
-        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_info.csv"
+        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_{MOTOR_TL}_{var}_info.csv"
 
         end_time = datetime.datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
@@ -434,7 +433,7 @@ for curve_var in curve_parameters:
             curve_var.lower():curve
         })
 
-        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
+        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
 
         curve_path.parent.mkdir(parents=True,exist_ok=True)
 
@@ -456,7 +455,7 @@ for curve_var in curve_parameters:
     plt.grid(True)
     plt.legend()
 
-    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos"
+    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
 
     save_fig.mkdir(parents=True,exist_ok=True)
 

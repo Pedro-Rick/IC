@@ -10,14 +10,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "V"
+MOTOR = "Nabla"
 MOTOR_TL = "2D"
-var = "Hys"
-target = ["hysteresis"]
+var = "Jou"
+target = ["joule"]
 curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
-IC_BASE_DIR = BASE_DIR.parent.parent
+IC_BASE_DIR = BASE_DIR.parent.parent.parent
 PATH = IC_BASE_DIR / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
@@ -238,7 +238,7 @@ for model_type in models:
         best_curve_rmse = None
         best_unlock = None
 
-        SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_wei_info.csv"
+        SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
 
         columns = ["neurons","layers","lr","unlock_layers","epochs",
                    f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
@@ -302,12 +302,12 @@ for model_type in models:
                 y_pred=torch.cat(y_pred_list).cpu()
                 y_test=torch.cat(y_test_list).cpu()
 
-                Hys_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
-                Hys_rmse = np.sqrt(Hys_mse)
-                Hys_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+                Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+                Jou_rmse = np.sqrt(Jou_mse)
+                Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-                mape_curve.append(Hys_mape)
-                rmse_curve.append(Hys_rmse)
+                mape_curve.append(Jou_mape)
+                rmse_curve.append(Jou_rmse)
 
             # comparação usando epoch final
             if mape_curve[-1] < best_epoch_mape:
@@ -319,13 +319,13 @@ for model_type in models:
                 best_epoch_rmse = rmse_curve[-1]
                 best_curve_rmse = rmse_curve.copy()
 
-            Hys_score=r2_score(y_test.numpy(),y_pred.numpy())
+            Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds()
 
             contents = [b_TL_neurons,b_TL_layers,b_TL_lr,unlock,epochs,
-                        Hys_score,Hys_mse,Hys_rmse,Hys_mape,elapsed_time]
+                        Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
 
             info = register_csv(contents, info, SAVE_CONTS)
 
@@ -390,17 +390,17 @@ for model_type in models:
             y_pred=torch.cat(y_pred_list).cpu()
             y_test=torch.cat(y_test_list).cpu()
 
-            Hys_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
-            Hys_rmse=np.sqrt(Hys_mse)
-            Hys_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+            Jou_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
+            Jou_rmse=np.sqrt(Jou_mse)
+            Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-            mape_curve.append(Hys_mape)
-            rmse_curve.append(Hys_rmse)
+            mape_curve.append(Jou_mape)
+            rmse_curve.append(Jou_rmse)
 
         results_curves["TLa_MAPE"] = mape_curve
         results_curves["TLa_RMSE"] = rmse_curve
 
-        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_TL_{MOTOR_TL}_arq_info.csv"
+        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_{MOTOR_TL}_{var}_info.csv"
 
         end_time = datetime.datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
@@ -411,7 +411,7 @@ for model_type in models:
         info = pd.DataFrame(columns=columns)
 
         contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs,
-                    Hys_score,Hys_mse,Hys_rmse,Hys_mape,elapsed_time]
+                    Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
 
         info = register_csv(contents, info, SAVE_CONTS)
 
@@ -434,7 +434,7 @@ for curve_var in curve_parameters:
             curve_var.lower():curve
         })
 
-        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
+        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
 
         curve_path.parent.mkdir(parents=True,exist_ok=True)
 
@@ -456,7 +456,7 @@ for curve_var in curve_parameters:
     plt.grid(True)
     plt.legend()
 
-    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / "graficos"
+    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
 
     save_fig.mkdir(parents=True,exist_ok=True)
 
