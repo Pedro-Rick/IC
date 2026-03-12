@@ -161,6 +161,23 @@ def get_best_mape_row(parameter):
 
 
 # =========================
+# SEEDS
+# =========================
+
+def set_seed(seed):
+
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+seeds = [0,1,2,3,4]   # ALTERÁVEL
+
+
+# =========================
 # DATA LOADERS
 # =========================
 
@@ -218,27 +235,31 @@ plt.figure()
 # =========================
 
 results_curves = {}
+results_std = {}
 
 for model_type in models:
 
     print("==========")
     print(f"modelo: {model_type}")
     print("==========")
-  
+
     # =========================
     # TL WITH WEIGHTS
     # =========================
 
     if model_type == "TLap":
 
-        best_epoch_mape = float("inf")
-        best_epoch_rmse = float("inf")
-
-        best_curve_mape = None
-        best_curve_rmse = None
+        best_mean_mape = float("inf")
         best_unlock = None
 
+        best_curve_mape_mean = None
+        best_curve_mape_std = None
+
+        best_curve_rmse_mean = None
+        best_curve_rmse_std = None
+
         SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
+
         columns = ["neurons","layers","lr","unlock_layers","epochs",
                    f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
 
@@ -248,26 +269,162 @@ for model_type in models:
 
             print(f"\nTestando unlock_layers = {unlock}")
 
-            model = TLRegressionModel(
+            mape_matrix = []
+            rmse_matrix = []
+
+            seed_csv_done = False
+
+            for seed in seeds:
+
+                print(f"Seed {seed}")
+
+                set_seed(seed)
+
+                model = TLRegressionModel(
+                    input_dim=input_dim,
+                    peso_path=ARQ_PESOS,
+                    unlock_layers=unlock
+                )
+
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                model.to(device)
+
+                loss_func = nn.MSELoss()
+
+                optimizer = torch.optim.Adam(
+                    filter(lambda p: p.requires_grad, model.parameters()),
+                    lr=b_TL_lr
+                )
+
+                mape_curve = []
+                rmse_curve = []
+
+                start_time = datetime.datetime.now()
+
+                for ep in range(epochs):
+
+                    model.train()
+
+                    for X,y in train_loader_full:
+
+                        X,y = X.to(device),y.to(device)
+
+                        pred = model(X)
+                        loss = loss_func(pred,y)
+
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+
+                    y_pred_list=[]
+                    y_test_list=[]
+
+                    model.eval()
+
+                    with torch.no_grad():
+
+                        for X,y in test_loader:
+
+                            X,y = X.to(device),y.to(device)
+
+                            y_pred_list.append(model(X))
+                            y_test_list.append(y)
+
+                    y_pred=torch.cat(y_pred_list).cpu()
+                    y_test=torch.cat(y_test_list).cpu()
+
+                    Hys_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+                    Hys_rmse = np.sqrt(Hys_mse)
+                    Hys_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+
+                    mape_curve.append(Hys_mape)
+                    rmse_curve.append(Hys_rmse)
+
+                mape_matrix.append(mape_curve)
+                rmse_matrix.append(rmse_curve)
+
+                # salva apenas uma seed no CSV
+                if not seed_csv_done:
+
+                    Hys_score=r2_score(y_test.numpy(),y_pred.numpy())
+
+                    end_time = datetime.datetime.now()
+                    elapsed_time = (end_time - start_time).total_seconds()
+
+                    contents = [b_TL_neurons,b_TL_layers,b_TL_lr,unlock,epochs,
+                                Hys_score,Hys_mse,Hys_rmse,Hys_mape,elapsed_time]
+
+                    info = register_csv(contents, info, SAVE_CONTS)
+
+                    seed_csv_done = True
+
+            # ======================
+            # MÉDIA ENTRE SEEDS
+            # ======================
+
+            mape_matrix = np.array(mape_matrix)
+            rmse_matrix = np.array(rmse_matrix)
+
+            mean_mape = mape_matrix.mean(axis=0)
+            std_mape  = mape_matrix.std(axis=0)
+
+            mean_rmse = rmse_matrix.mean(axis=0)
+            std_rmse  = rmse_matrix.std(axis=0)
+
+            if mean_mape[-1] < best_mean_mape:
+
+                best_mean_mape = mean_mape[-1]
+
+                best_unlock = unlock
+
+                best_curve_mape_mean = mean_mape
+                best_curve_mape_std = std_mape
+
+                best_curve_rmse_mean = mean_rmse
+                best_curve_rmse_std = std_rmse
+
+
+        print("\nMelhor arquitetura TLap")
+        print("unlock_layers =",best_unlock)
+        print("MAPE médio final =",best_mean_mape)
+
+        results_curves["TLap_MAPE"] = best_curve_mape_mean
+        results_curves["TLap_RMSE"] = best_curve_rmse_mean
+
+        results_std["TLap_MAPE"] = best_curve_mape_std
+        results_std["TLap_RMSE"] = best_curve_rmse_std
+
+
+    # =========================
+    # TL ARCHITECTURE
+    # =========================
+
+    if model_type == "TLa":
+
+        mape_matrix = []
+        rmse_matrix = []
+
+        for seed in seeds:
+
+            print(f"Seed {seed}")
+
+            set_seed(seed)
+
+            model = RegressionModel(
                 input_dim=input_dim,
-                peso_path=ARQ_PESOS,
-                unlock_layers=unlock
+                output_dim=1,
+                neurons=b_TL_neurons,
+                layers=b_TL_layers
             )
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model.to(device)
 
             loss_func = nn.MSELoss()
-
-            optimizer = torch.optim.Adam(
-                filter(lambda p: p.requires_grad, model.parameters()),
-                lr=b_TL_lr
-            )
+            optimizer = torch.optim.Adam(model.parameters(), lr=b_TL_lr)
 
             mape_curve = []
             rmse_curve = []
-
-            start_time = datetime.datetime.now()
 
             for ep in range(epochs):
 
@@ -277,8 +434,8 @@ for model_type in models:
 
                     X,y = X.to(device),y.to(device)
 
-                    pred = model(X)
-                    loss = loss_func(pred,y)
+                    pred=model(X)
+                    loss=loss_func(pred,y)
 
                     optimizer.zero_grad()
                     loss.backward()
@@ -301,118 +458,24 @@ for model_type in models:
                 y_pred=torch.cat(y_pred_list).cpu()
                 y_test=torch.cat(y_test_list).cpu()
 
-                Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
-                Jou_rmse = np.sqrt(Jou_mse)
-                Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+                Hys_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
+                Hys_rmse=np.sqrt(Hys_mse)
+                Hys_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-                mape_curve.append(Jou_mape)
-                rmse_curve.append(Jou_rmse)
+                mape_curve.append(Hys_mape)
+                rmse_curve.append(Hys_rmse)
 
-            # comparação usando epoch final
-            if mape_curve[-1] < best_epoch_mape:
-                best_epoch_mape = mape_curve[-1]
-                best_curve_mape = mape_curve.copy()
-                best_unlock = unlock
+            mape_matrix.append(mape_curve)
+            rmse_matrix.append(rmse_curve)
 
-            if rmse_curve[-1] < best_epoch_rmse:
-                best_epoch_rmse = rmse_curve[-1]
-                best_curve_rmse = rmse_curve.copy()
+        mape_matrix=np.array(mape_matrix)
+        rmse_matrix=np.array(rmse_matrix)
 
-            Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
+        results_curves["TLa_MAPE"]=mape_matrix.mean(axis=0)
+        results_curves["TLa_RMSE"]=rmse_matrix.mean(axis=0)
 
-            end_time = datetime.datetime.now()
-            elapsed_time = (end_time - start_time).total_seconds()
-
-            contents = [b_TL_neurons,b_TL_layers,b_TL_lr,unlock,epochs,
-                        Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
-
-            info = register_csv(contents, info, SAVE_CONTS)
-
-        print(f"\nMelhor unlock_layers = {best_unlock}")
-
-        results_curves["TLap_MAPE"] = best_curve_mape
-        results_curves["TLap_RMSE"] = best_curve_rmse
-
-    # =========================
-    # TL ARCHITECTURE
-    # =========================
-
-    if model_type == "TLa":
-
-        model = RegressionModel(
-            input_dim=input_dim,
-            output_dim=1,
-            neurons=b_TL_neurons,
-            layers=b_TL_layers
-        )
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-
-        loss_func = nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=b_TL_lr)
-
-        mape_curve = []
-        rmse_curve = []
-
-        start_time = datetime.datetime.now()
-
-        for ep in range(epochs):
-
-            model.train()
-
-            for X,y in train_loader_full:
-
-                X,y = X.to(device),y.to(device)
-
-                pred=model(X)
-                loss=loss_func(pred,y)
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            y_pred_list=[]
-            y_test_list=[]
-
-            model.eval()
-
-            with torch.no_grad():
-
-                for X,y in test_loader:
-
-                    X,y = X.to(device),y.to(device)
-
-                    y_pred_list.append(model(X))
-                    y_test_list.append(y)
-
-            y_pred=torch.cat(y_pred_list).cpu()
-            y_test=torch.cat(y_test_list).cpu()
-
-            Jou_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
-            Jou_rmse=np.sqrt(Jou_mse)
-            Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
-
-            mape_curve.append(Jou_mape)
-            rmse_curve.append(Jou_rmse)
-
-        results_curves["TLa_MAPE"] = mape_curve
-        results_curves["TLa_RMSE"] = rmse_curve
-
-        SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_{MOTOR_TL}_{var}_info.csv"
-
-        end_time = datetime.datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-
-        columns = ["neurons","layers","lr","epochs",
-                   f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
-
-        info = pd.DataFrame(columns=columns)
-
-        contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs,
-                    Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
-
-        info = register_csv(contents, info, SAVE_CONTS)
+        results_std["TLa_MAPE"]=mape_matrix.std(axis=0)
+        results_std["TLa_RMSE"]=rmse_matrix.std(axis=0)
 
 
 # =========================
@@ -428,23 +491,21 @@ for curve_var in curve_parameters:
         if curve_var not in name:
             continue
 
-        curve_df=pd.DataFrame({
-            "epoch":np.arange(1,epochs+1),
-            curve_var.lower():curve
-        })
+        std = results_std[name]
 
-        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
-
-        curve_path.parent.mkdir(parents=True,exist_ok=True)
-
-        curve_df.to_csv(curve_path,index=False)
-
-        print("Curva TL salva em:",curve_path)
+        epochs_axis=np.arange(1,epochs+1)
 
         plt.plot(
-            curve_df["epoch"],
-            curve_df[curve_var.lower()],
+            epochs_axis,
+            curve,
             label=name
+        )
+
+        plt.fill_between(
+            epochs_axis,
+            curve-std,
+            curve+std,
+            alpha=0.25
         )
 
     plt.xlabel("Epoch")
@@ -462,5 +523,6 @@ for curve_var in curve_parameters:
     plt.savefig(save_fig / f"TLa_vs_TLap-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
 
     plt.show()
+
 
 print("\nFIM")

@@ -464,4 +464,4 @@ for curve_var in curve_parameters:
 
     plt.show()
 
-print("\nFIM")
+print("\nFIM") 
