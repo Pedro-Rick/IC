@@ -275,7 +275,7 @@ for curve_var in curve_parameters:
     # ========================= 
     # LOAD TL PESOS 
     # =========================
-    TL_PESOS_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
+    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLap{curve_var}_{MOTOR}_{var}"
 
     if TL_PESOS_path.exists():
         pesos_df = pd.read_csv(TL_PESOS_path)
@@ -283,7 +283,7 @@ for curve_var in curve_parameters:
         plt.plot(
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"],
-            label="Pesos"
+            label=f"TLap_{curve_var}"
         )
 
         plt.fill_between(

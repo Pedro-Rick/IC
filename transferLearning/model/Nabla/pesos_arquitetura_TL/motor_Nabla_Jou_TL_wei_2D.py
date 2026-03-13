@@ -185,7 +185,7 @@ results_curves = {}
 # CONFIG
 # =========================
 epochs = 100
-seeds = 4
+seeds = 5
 
 best_unlock_mape = None
 best_unlock_rmse = None
@@ -207,7 +207,7 @@ info = pd.DataFrame(columns=columns)
 for unlock in unlock_layers_list:
     
     print("=========")
-    print(f"\nTestando unlock_layers = {unlock +1}")
+    print(f"\nTestando unlock_layers = {unlock}")
     print("")
 
     mape_seeds = []
@@ -327,8 +327,8 @@ for unlock in unlock_layers_list:
 print(f"\nMelhor unlock_layers (MAPE) = {best_unlock_mape}")
 print(f"Melhor unlock_layers (RMSE) = {best_unlock_rmse}")
 
-results_curves["TLap_MAPE"] = (best_mean_curve_mape, best_std_curve_mape)
-results_curves["TLap_RMSE"] = (best_mean_curve_rmse, best_std_curve_rmse)
+results_curves[f"TLap_MAPE_unlock_{best_unlock_mape}"] = (best_mean_curve_mape, best_std_curve_mape)
+results_curves[f"TLap_RMSE_unlock_{best_unlock_rmse}"] = (best_mean_curve_rmse, best_std_curve_rmse)
 
 
 # =========================
@@ -338,7 +338,10 @@ results_curves["TLap_RMSE"] = (best_mean_curve_rmse, best_std_curve_rmse)
 for curve_var in curve_parameters:
 
     plt.figure()
-
+    
+    # ========================= 
+    # LOAD BASELINE 
+    # =========================
     baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
 
     if baseline_path.exists():
@@ -348,13 +351,16 @@ for curve_var in curve_parameters:
         plt.plot(
             base_df["epoch"],
             base_df[curve_var.lower()],
-            label="Baseline"
+            label=f"Baseline{curve_var}"
         )
 
     else:
         print(f"CSV curva baseline {curve_var} ainda não existe")
 
-    TL_PESOS_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
+    # ========================= 
+    # LOAD TL ARQ 
+    # =========================
+    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa{curve_var}_{MOTOR}_{var}"
 
     if TL_PESOS_path.exists():
 
@@ -363,7 +369,7 @@ for curve_var in curve_parameters:
         plt.plot(
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"],
-            label="Pesos"
+            label=f"TLa_{curve_var}"
         )
 
         plt.fill_between(
