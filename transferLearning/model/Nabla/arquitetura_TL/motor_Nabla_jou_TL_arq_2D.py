@@ -165,6 +165,7 @@ seeds = 4
 for seed in range (seeds):
 
     print(f"===== Seed {seed + 1} =====")
+    print("")
 
     model = RegressionModel(input_dim=input_dim, output_dim=1, neurons=b_TL_neurons, layers=b_TL_layers)
 
@@ -218,6 +219,9 @@ for seed in range (seeds):
 
         mape_epochs.append(Jou_mape)
         rmse_epochs.append(Jou_rmse)
+
+        print(f"Epoch {ep +1} || MAPE = {Jou_mape}  RMSE = {Jou_rmse}")
+        print(""/"")
     
     media_mape_epochs.append(mape_epochs)
     media_rmse_epochs.append(rmse_epochs)
