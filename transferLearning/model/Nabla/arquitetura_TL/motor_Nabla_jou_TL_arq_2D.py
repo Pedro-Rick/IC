@@ -145,8 +145,6 @@ b_TL_layers = int(get_best_mape_row("layers"))
 
 neurons_max= int(b_TL_neurons * b_TL_layers)
 
-plt.figure()
-
 results_curves = {}
 
 columns = ["neurons","layers","lr","epochs", f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
@@ -159,12 +157,14 @@ media_rmse_epochs = []
 # CONFIG
 # =========================
 epochs = 100
-seeds = 5
+seeds = 4
 
 # =========================
 # TL ARCHITECTURE
 # =========================
 for seed in range (seeds):
+
+    print(f"===== Seed {seed + 1} =====")
 
     model = RegressionModel(input_dim=input_dim, output_dim=1, neurons=b_TL_neurons, layers=b_TL_layers)
 
@@ -248,6 +248,8 @@ info = register_csv(contents, info, SAVE_CONTS)
 # =========================
 
 for curve_var in curve_parameters:
+
+    plt.figure()
 
     # ========================= 
     # LOAD BASELINE 
