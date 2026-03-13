@@ -360,7 +360,7 @@ for curve_var in curve_parameters:
     # ========================= 
     # LOAD TL ARQ 
     # =========================
-    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa{curve_var}_{MOTOR}_{var}"
+    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa_{curve_var}_{MOTOR}_{var}"
 
     if TL_PESOS_path.exists():
 
