@@ -221,7 +221,7 @@ for seed in range (seeds):
         rmse_epochs.append(Jou_rmse)
 
         print(f"Epoch {ep +1} || MAPE = {Jou_mape}  RMSE = {Jou_rmse}")
-        print(""/"")
+        print("")
     
     media_mape_epochs.append(mape_epochs)
     media_rmse_epochs.append(rmse_epochs)
