@@ -185,7 +185,7 @@ results_curves = {}
 # CONFIG
 # =========================
 epochs = 100
-seeds = 5
+seeds = 4
 
 best_unlock_mape = None
 best_unlock_rmse = None
@@ -207,7 +207,7 @@ info = pd.DataFrame(columns=columns)
 for unlock in unlock_layers_list:
     
     print("=========")
-    print(f"\nTestando unlock_layers = {unlock}")
+    print(f"\nTestando unlock_layers = {unlock +1}")
     print("")
 
     mape_seeds = []
@@ -353,7 +353,7 @@ for curve_var in curve_parameters:
     else:
         print(f"CSV curva baseline {curve_var} ainda não existe")
 
-    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLap_{curve_var}_{MOTOR}_{var}.csv"
+    TL_PESOS_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
 
     if TL_PESOS_path.exists():
 
