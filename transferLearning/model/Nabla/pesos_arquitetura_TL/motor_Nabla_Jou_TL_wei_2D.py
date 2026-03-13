@@ -308,6 +308,7 @@ for unlock in unlock_layers_list:
     score_mape = mape_mean[-1]
     score_rmse = rmse_mean[-1]
 
+    print("")
     print("MAPE médio final:",score_mape)
     print("RMSE médio final:",score_rmse)
 
