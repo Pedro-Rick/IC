@@ -17,7 +17,7 @@ target = ["joule"]
 curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
-IC_BASE_DIR = BASE_DIR.parent.parent.parent
+IC_BASE_DIR = BASE_DIR.parent.parent.parent.parent
 PATH = IC_BASE_DIR / "dataset" / MOTOR
 
 TRAIN_FILE = "_all_scaled_train.csv"
