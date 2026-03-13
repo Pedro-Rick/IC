@@ -157,7 +157,7 @@ media_rmse_epochs = []
 # CONFIG
 # =========================
 epochs = 100
-seeds = 30
+seeds = 5
 
 # =========================
 # TL ARCHITECTURE
