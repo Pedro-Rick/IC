@@ -283,7 +283,7 @@ for curve_var in curve_parameters:
         line, = plt.plot(
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"],
-            label=f"TLap_{curve_var}"
+            label=f"TLap_{curve_var}_unlock_4"
         )
 
         plt.fill_between(

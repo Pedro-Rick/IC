@@ -348,10 +348,10 @@ for curve_var in curve_parameters:
 
         base_df = pd.read_csv(baseline_path)
 
-        plt.plot(
+        line, = plt.plot(
             base_df["epoch"],
             base_df[curve_var.lower()],
-            label=f"Baseline{curve_var}"
+            label="Baseline"
         )
 
     else:
@@ -366,7 +366,7 @@ for curve_var in curve_parameters:
 
         pesos_df = pd.read_csv(TL_PESOS_path)
 
-        plt.plot(
+        line, = plt.plot(
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"],
             label=f"TLa_{curve_var}"
@@ -376,6 +376,7 @@ for curve_var in curve_parameters:
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"] - pesos_df[f"{curve_var.lower()}_std"],
             pesos_df[f"{curve_var.lower()}_mean"] + pesos_df[f"{curve_var.lower()}_std"],
+            color=line.get_color(),
             alpha=0.25
         )
 
@@ -401,7 +402,7 @@ for curve_var in curve_parameters:
 
         print("Curva TL salva em:",curve_path)
 
-        plt.plot(
+        line, = plt.plot(
             curve_df["epoch"],
             curve_df[f"{curve_var.lower()}_mean"],
             label=name
@@ -411,13 +412,14 @@ for curve_var in curve_parameters:
             curve_df["epoch"],
             curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
             curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
+            color=line.get_color(),
             alpha=0.25
         )
 
     plt.xlabel("Epoch")
     plt.ylabel(curve_var)
 
-    plt.title(f"{MOTOR}_{var} — TLa vs TLap - {curve_var}")
+    plt.title(f"{MOTOR}_{var} — TLa vs TLap vs - {curve_var}")
 
     plt.grid(True)
     plt.legend()
