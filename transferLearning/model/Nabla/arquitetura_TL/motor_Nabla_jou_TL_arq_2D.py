@@ -291,7 +291,7 @@ for curve_var in curve_parameters:
             pesos_df[f"{curve_var.lower()}_mean"] - pesos_df[f"{curve_var.lower()}_std"],
             pesos_df[f"{curve_var.lower()}_mean"] + pesos_df[f"{curve_var.lower()}_std"],
             color=line.get_color(),
-            alpha=0.15
+            alpha=0.25
         )
 
     else:
@@ -327,7 +327,7 @@ for curve_var in curve_parameters:
             curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
             curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
             color=line.get_color(),
-            alpha=0.15
+            alpha=0.25
         )
 
     plt.xlabel("Epoch")
