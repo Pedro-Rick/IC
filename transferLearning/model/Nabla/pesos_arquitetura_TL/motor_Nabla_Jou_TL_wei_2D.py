@@ -185,7 +185,7 @@ results_curves = {}
 # CONFIG
 # =========================
 epochs = 100
-seeds = 5
+seeds = 30
 
 best_unlock_mape = None
 best_unlock_rmse = None
