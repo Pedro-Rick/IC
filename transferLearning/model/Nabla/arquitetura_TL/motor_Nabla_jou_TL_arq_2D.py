@@ -280,7 +280,7 @@ for curve_var in curve_parameters:
     if TL_PESOS_path.exists():
         pesos_df = pd.read_csv(TL_PESOS_path)
 
-        plt.plot(
+        line, = plt.plot(
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"],
             label=f"TLap_{curve_var}"
@@ -290,7 +290,8 @@ for curve_var in curve_parameters:
             pesos_df["epoch"],
             pesos_df[f"{curve_var.lower()}_mean"] - pesos_df[f"{curve_var.lower()}_std"],
             pesos_df[f"{curve_var.lower()}_mean"] + pesos_df[f"{curve_var.lower()}_std"],
-            alpha=0.25
+            color=line.get_color(),
+            alpha=0.15
         )
 
     else:
@@ -301,7 +302,7 @@ for curve_var in curve_parameters:
         if curve_var not in name:
             continue
 
-        curve_df = pd.DataFrame({
+        line, = curve_df = pd.DataFrame({
             "epoch": np.arange(1, epochs+1),
             f"{curve_var.lower()}_mean": curve_mean,
             f"{curve_var.lower()}_std": curve_std
@@ -325,7 +326,7 @@ for curve_var in curve_parameters:
             curve_df["epoch"],
             curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
             curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
-            alpha=0.25
+            alpha=0.15
         )
 
     plt.xlabel("Epoch")
