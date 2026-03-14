@@ -263,10 +263,10 @@ for curve_var in curve_parameters:
     if baseline_path.exists():
         base_df = pd.read_csv(baseline_path)
 
-        plt.plot(
-        base_df["epoch"],
-        base_df[curve_var.lower()],
-        label="Baseline"
+        line, = plt.plot(
+            base_df["epoch"],
+            base_df[curve_var.lower()],
+            label="Baseline"
         )
 
     else:
@@ -302,7 +302,7 @@ for curve_var in curve_parameters:
         if curve_var not in name:
             continue
 
-        line, = curve_df = pd.DataFrame({
+        curve_df = pd.DataFrame({
             "epoch": np.arange(1, epochs+1),
             f"{curve_var.lower()}_mean": curve_mean,
             f"{curve_var.lower()}_std": curve_std
@@ -316,7 +316,7 @@ for curve_var in curve_parameters:
 
         print("Curva TL salva em:",curve_path)
 
-        plt.plot(
+        line, = plt.plot(
             curve_df["epoch"],
             curve_df[f"{curve_var.lower()}_mean"],
             label=name
@@ -326,6 +326,7 @@ for curve_var in curve_parameters:
             curve_df["epoch"],
             curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
             curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
+            color=line.get_color(),
             alpha=0.15
         )
 
