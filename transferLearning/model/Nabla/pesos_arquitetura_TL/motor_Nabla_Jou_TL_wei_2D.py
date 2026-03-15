@@ -428,7 +428,7 @@ for curve_var in curve_parameters:
 
     save_fig.mkdir(parents=True,exist_ok=True)
 
-    plt.savefig(save_fig / f"TLa_vs_TLap-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
+    plt.savefig(save_fig / f"baseline_TLa_TLp-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
 
     plt.show()
 

@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
-MOTOR = "Nabla"
-MOTOR_TL = "2D"
+MOTOR = "2D"
+MOTOR_TL = "Nabla"
 var = "Jou"
 target = ["joule"]
 curve_parameters = ["MAPE", "RMSE"]

@@ -11,9 +11,9 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 
 MOTOR = "Nabla"
-MOTOR_TL = "2D"
-var = "Jou"
-target = ["joule"]
+MOTOR_TL = "V"
+var = "Hys"
+target = ["hysteresis"]
 curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -212,15 +212,15 @@ for seed in range (seeds):
         y_pred=torch.cat(y_pred_list).cpu()
         y_test=torch.cat(y_test_list).cpu()
         
-        Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-        Jou_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
-        Jou_rmse=np.sqrt(Jou_mse)
-        Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+        Hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+        Hys_mse=mean_squared_error(y_test.numpy(),y_pred.numpy())
+        Hys_rmse=np.sqrt(Hys_mse)
+        Hys_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-        mape_epochs.append(Jou_mape)
-        rmse_epochs.append(Jou_rmse)
+        mape_epochs.append(Hys_mape)
+        rmse_epochs.append(Hys_rmse)
 
-        print(f"Epoch {ep +1} || MAPE = {Jou_mape}  RMSE = {Jou_rmse}")
+        print(f"Epoch {ep +1} || MAPE = {Hys_mape}  RMSE = {Hys_rmse}")
         print("")
     
     media_mape_epochs.append(mape_epochs)
@@ -243,7 +243,7 @@ SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL
 end_time = datetime.datetime.now()
 elapsed_time = (end_time - start_time).total_seconds()
 
-contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs, Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
+contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs, Hys_score,Hys_mse,Hys_rmse,Hys_mape,elapsed_time]
 
 info = register_csv(contents, info, SAVE_CONTS)
 
