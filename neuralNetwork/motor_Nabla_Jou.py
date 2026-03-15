@@ -154,8 +154,6 @@ for i in range(len(neurons)):
             # ===== TRAIN POR EPOCH =====
             for ep in range(epochs):
 
-                print(f"======= Epoca {ep} =======")
-
                 model.train()
                 for X, y in train_loader_full:
                     X, y = X.to(device), y.to(device)
@@ -188,9 +186,6 @@ for i in range(len(neurons)):
                 Jou_rmse=np.sqrt(Jou_mse)
                 Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
 
-                print(f"Jou_mape = {Jou_mape}")
-                print("")
-
                 mape_epoch.append(Jou_mape)
                 rmse_epoch.append(Jou_rmse)
             
@@ -203,6 +198,10 @@ for i in range(len(neurons)):
                     best_rmse = Jou_rmse
                     curve_rmse = rmse_epoch.copy()
                     best_model_rmse = model
+
+            print(f"MAPE = {Jou_mape}       || RMSE = {Jou_rmse}")
+            print(f"Best MAPE = {best_mape} || Best RMSE = {best_rmse}")
+            print("")
 
             end_time = datetime.datetime.now()
             elapsed_time = (end_time - start_time).total_seconds()    
