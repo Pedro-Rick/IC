@@ -164,9 +164,6 @@ seeds = 30
 # =========================
 for seed in range (seeds):
 
-    print(f"===== Seed {seed + 1} =====")
-    print("")
-
     model = RegressionModel(input_dim=input_dim, output_dim=1, neurons=b_TL_neurons, layers=b_TL_layers)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -220,8 +217,11 @@ for seed in range (seeds):
         mape_epochs.append(Jou_mape)
         rmse_epochs.append(Jou_rmse)
 
-        print(f"Epoch {ep +1} || MAPE = {Jou_mape}  RMSE = {Jou_rmse}")
-        print("")
+        if (((seed%10)== 0)):
+            print(f"===== Seed {seed + 1} =====")
+            print("")
+            print(f"Epoch {ep +1} || MAPE = {Hys_mape}  RMSE = {Hys_rmse}")
+            print("")
     
     media_mape_epochs.append(mape_epochs)
     media_rmse_epochs.append(rmse_epochs)
