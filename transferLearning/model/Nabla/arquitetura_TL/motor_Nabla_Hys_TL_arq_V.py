@@ -164,6 +164,7 @@ seeds = 30
 # =========================
 for seed in range (seeds):
     
+    print("")
     print(f"===== Seed {seed + 1} =====")
     print("")
     
@@ -220,9 +221,8 @@ for seed in range (seeds):
         mape_epochs.append(Hys_mape)
         rmse_epochs.append(Hys_rmse)
 
-        if (((ep%10)== 0)):
+        if (((ep%50)== 0) or ((ep+1) == 100)):
             print(f"Epoch {ep +1} || MAPE = {Hys_mape}  RMSE = {Hys_rmse}")
-            print("")
     
     media_mape_epochs.append(mape_epochs)
     media_rmse_epochs.append(rmse_epochs)
