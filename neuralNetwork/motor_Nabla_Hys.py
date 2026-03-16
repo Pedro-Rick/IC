@@ -133,7 +133,6 @@ for i in range(len(neurons)):
             
             print("============")
             print(f"\nTraining model --- neurons: {neurons[i]} -layers: {layers[j]} -lr: {learning_rates[k]}")
-            print("============")
             print("")
 
             neuron_per_layer = int(neurons[i]/layers[j])
