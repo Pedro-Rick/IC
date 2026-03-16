@@ -221,7 +221,7 @@ for seed in range (seeds):
         mape_epochs.append(Hys_mape)
         rmse_epochs.append(Hys_rmse)
 
-        if (((ep%50)== 0) or ((ep+1) == 100)):
+        if ((((ep+1)%50)== 0) or ((ep) == 0)):
             print(f"Epoch {ep +1} || MAPE = {Hys_mape}  RMSE = {Hys_rmse}")
     
     media_mape_epochs.append(mape_epochs)
