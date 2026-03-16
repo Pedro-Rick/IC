@@ -163,6 +163,9 @@ seeds = 30
 # TL ARCHITECTURE
 # =========================
 for seed in range (seeds):
+    
+    print(f"===== Seed {seed + 1} =====")
+    print("")
 
     model = RegressionModel(input_dim=input_dim, output_dim=1, neurons=b_TL_neurons, layers=b_TL_layers)
 
@@ -217,9 +220,7 @@ for seed in range (seeds):
         mape_epochs.append(Jou_mape)
         rmse_epochs.append(Jou_rmse)
 
-        if (((seed%10)== 0)):
-            print(f"===== Seed {seed + 1} =====")
-            print("")
+        if (((ep%10)== 0)):
             print(f"Epoch {ep +1} || MAPE = {Hys_mape}  RMSE = {Hys_rmse}")
             print("")
     
