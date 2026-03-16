@@ -191,7 +191,7 @@ for i in range(len(neurons)):
             if Jou_mape < best_mape:
                     best_mape = Jou_mape
                     curve_mape = mape_epoch.copy()
-                    best_model_mape = model
+                    best_model_mape = model.linear
 
             if Jou_rmse < best_rmse:
                     best_rmse = Jou_rmse
