@@ -419,7 +419,7 @@ for curve_var in curve_parameters:
     plt.xlabel("Epoch")
     plt.ylabel(curve_var)
 
-    plt.title(f"{MOTOR}_{var} — TLa vs TLap vs - {curve_var}")
+    plt.title(f"{MOTOR}_{var} - TL:{MOTOR_TL} - TLa, TLap, Baseline - {curve_var} ")
 
     plt.grid(True)
     plt.legend()
