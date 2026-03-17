@@ -268,8 +268,8 @@ for unlock in unlock_layers_list:
                     y_pred_list.append(model(X))
                     y_test_list.append(y)
 
-            y_pred=torch.cat(y_pred_list).cpu()
-            y_test=torch.cat(y_test_list).cpu()
+            y_pred=torch.cat(y_pred_list)
+            y_test=torch.cat(y_test_list)
 
             Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
             Jou_rmse = np.sqrt(Jou_mse)
