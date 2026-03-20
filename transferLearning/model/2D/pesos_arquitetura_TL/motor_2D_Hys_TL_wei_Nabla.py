@@ -184,7 +184,7 @@ results_curves = {}
 epochs = 100
 seeds = 30
 
-SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
+SAVE_CONTS = IC_BASE_DIR / "transferLearning" / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
 
 columns = ["seed", "max_neurons", "layers", "lr", "unlock_layers", "epoch", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
 info = pd.DataFrame(columns=columns)
