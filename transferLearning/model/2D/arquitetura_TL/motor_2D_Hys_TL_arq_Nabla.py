@@ -230,7 +230,7 @@ mape_array = np.array(media_mape_epochs)
 mape_mean = np.mean(mape_array, axis=0)
 mape_std  = np.std(mape_array, axis=0)
 
-results_curves["TLa_MAPE"] = (mape_mean, mape_std)
+results_curves["TL_arquitetura"] = (mape_mean, mape_std)
 
 
 
@@ -252,7 +252,7 @@ if baseline_path.exists():
     line, = plt.plot(
         base_df["epoch"],
         base_df["mape_mean"],
-        label=f"TLap_MAPE"
+        label=f"baseline"
     )
 
     plt.fill_between(
@@ -276,7 +276,7 @@ if TL_PESOS_path.exists():
     line, = plt.plot(
         pesos_df["epoch"],
         pesos_df["mape_mean"],
-        label=f"TLap_MAPE"
+        label=f"TL_pesos"
     )
 
     plt.fill_between(

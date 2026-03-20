@@ -287,7 +287,7 @@ score_mape = mape_mean[-1]
 print("")
 print("MAPE médio final:",score_mape)
 
-results_curves[f"TLap_MAPE"] = (mape_mean, mape_std)
+results_curves[f"TL_pesos"] = (mape_mean, mape_std)
 
 # =========================
 # SAVE + PLOT CURVES
@@ -309,7 +309,7 @@ if baseline_path.exists():
     line, = plt.plot(
         base_df["epoch"],
         base_df["mape_mean"],
-        label=f"TLap_MAPE"
+        label=f"Baseline"
     )
 
     plt.fill_between(
@@ -335,7 +335,7 @@ if TL_ARQ_path.exists():
     line, = plt.plot(
         arq_df["epoch"],
         arq_df["mape_mean"],
-        label=f"TLap_MAPE"
+        label=f"TL_arquitetura"
     )
 
     plt.fill_between(
