@@ -300,14 +300,14 @@ for name,(curve_mean,curve_std) in results_curves.items():
 
     line, = plt.plot(
             curve_df["epoch"],
-            curve_df[f"MAPE_mean"],
+            curve_df[f"mape_mean"],
             label=name
         )
 
     plt.fill_between(
         curve_df["epoch"],
-        curve_df[f"MAPE_mean"] - curve_df[f"MAPE_std"],
-        curve_df[f"MAPE_mean"] + curve_df[f"MAPE_std"],
+        curve_df[f"mape_mean"] - curve_df[f"mape_std"],
+        curve_df[f"mape_mean"] + curve_df[f"mape_std"],
         color=line.get_color(),
         alpha=0.25
     )
