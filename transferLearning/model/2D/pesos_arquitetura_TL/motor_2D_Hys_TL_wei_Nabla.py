@@ -261,7 +261,7 @@ for seed in range(seeds):
 
         mape_curve.append(Hys_mape)
 
-        contents = [b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, epochs, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+        contents = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         info = register_csv(contents, info, SAVE_CONTS)
 
         if ((((ep+1)%50)== 0) or ((ep) == 0)):
