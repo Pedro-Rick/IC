@@ -143,8 +143,6 @@ for i in range(len(neurons)):
             loss_func = nn.MSELoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
 
-            mape_epoch = []
-
             # ===== TRAIN POR EPOCH =====
             for ep in range(epochs):
 
@@ -182,7 +180,6 @@ for i in range(len(neurons)):
             
             if Hys_mape < best_mape:
                     best_mape = Hys_mape
-                    curve_mape = mape_epoch.copy()
                     best_model_mape = model.linear
                     b_neurons = neurons[i]
                     b_neurons_per_layer = int(neurons[i]/layers[j])
@@ -201,15 +198,22 @@ for i in range(len(neurons)):
 # =========================
 print("============")
 print(f"\n Melhor modelo: neurons = {b_neurons} - layers = {b_layers} - lr = {b_lr}")
-print("")
+print("============")
 
 columns = ['seed', 'max_neurons', 'layers', 'learn_rate',  "epoch", f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape'] 
 info = pd.DataFrame(columns = columns)
 
-model = RegressionModel(input_dim, 1, b_neurons_per_layer, b_layers)
-optimizer = torch.optim.Adam(model.parameters(), lr=b_lr)
 
 for seed in range(seeds):
+
+    print("")
+    print(f"===== Seed {seed + 1} =====")
+    print("")
+
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    model = RegressionModel(input_dim, 1, b_neurons_per_layer, b_layers).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=b_lr)
 
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -258,6 +262,9 @@ for seed in range(seeds):
         contents = [seed, b_neurons, b_layers, b_lr, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         save = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_per_epochs.csv"
         info = register_csv(contents, info, save)
+
+        if ((((ep+1)%50)== 0) or ((ep) == 0)):
+            print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
 
     media_mape_epochs.append(mape_epochs)
 

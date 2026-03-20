@@ -198,6 +198,10 @@ mape_seeds = []
 
 for seed in range(seeds):
 
+    print("")
+    print(f"===== Seed {seed + 1} =====")
+    print("")
+
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -260,7 +264,8 @@ for seed in range(seeds):
         contents = [b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, epochs, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         info = register_csv(contents, info, SAVE_CONTS)
 
-    print(f"seed: {seed +1} || MAPE 100% = {Hys_mape}")
+        if ((((ep+1)%50)== 0) or ((ep) == 0)):
+            print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
 
     mape_seeds.append(mape_curve)
 
