@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
@@ -14,7 +13,6 @@ MOTOR = "Nabla"
 MOTOR_TL = "2D"
 var = "Jou"
 target = ["joule"]
-curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
 IC_BASE_DIR = BASE_DIR.parent.parent.parent.parent
@@ -105,6 +103,7 @@ def register_csv(contents, info, arq_name):
 
     return info
 
+SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_{MOTOR_TL}_{var}_info.csv"
 
 # =========================
 # BEST PARAMS
@@ -147,11 +146,10 @@ neurons_max= int(b_TL_neurons * b_TL_layers)
 
 results_curves = {}
 
-columns = ["neurons","layers","lr","epochs", f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
-info = pd.DataFrame(columns=columns)
+columns = ['seed', 'max_neurons', 'layers', 'learn_rate',  "epoch", f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape'] 
+info = pd.DataFrame(columns = columns)
 
 media_mape_epochs = []
-media_rmse_epochs = []
 
 # =========================
 # CONFIG
@@ -177,9 +175,6 @@ for seed in range (seeds):
     optimizer = torch.optim.Adam(model.parameters(), lr=b_TL_lr)
 
     mape_epochs = []
-    rmse_epochs = []
-
-    start_time = datetime.datetime.now()
 
     for ep in range(epochs):
 
@@ -219,132 +214,125 @@ for seed in range (seeds):
         Jou_mape=mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
         mape_epochs.append(Jou_mape)
-        rmse_epochs.append(Jou_rmse)
+
 
         if ((((ep+1)%50)== 0) or ((ep) == 0)):
-            print(f"Epoch {ep +1} || MAPE = {Jou_mape}  RMSE = {Jou_rmse}")
-            
+            print(f"Epoch {ep +1} || MAPE = {Jou_mape}")
+        
+        contents = [seed, b_TL_neurons, b_TL_layers, b_TL_lr, (ep+1), Jou_score, Jou_mse, Jou_rmse, Jou_mape]
+        info = register_csv(contents, info, SAVE_CONTS)
+    
     media_mape_epochs.append(mape_epochs)
-    media_rmse_epochs.append(rmse_epochs)
 
 mape_array = np.array(media_mape_epochs)
-rmse_array = np.array(media_rmse_epochs)
 
 mape_mean = np.mean(mape_array, axis=0)
 mape_std  = np.std(mape_array, axis=0)
 
-rmse_mean = np.mean(rmse_array, axis=0)
-rmse_std  = np.std(rmse_array, axis=0)
+results_curves["TL_arquitetura"] = (mape_mean, mape_std)
 
-results_curves["TLa_MAPE"] = (mape_mean, mape_std)
-results_curves["TLa_RMSE"] = (rmse_mean, rmse_std)
 
-SAVE_CONTS = Path("transferLearning") / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_{MOTOR_TL}_{var}_info.csv"
-
-end_time = datetime.datetime.now()
-elapsed_time = (end_time - start_time).total_seconds()
-
-contents = [b_TL_neurons,b_TL_layers,b_TL_lr,epochs, Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
-
-info = register_csv(contents, info, SAVE_CONTS)
 
 # =========================
 # SAVE + PLOT CURVES
 # =========================
 
-for curve_var in curve_parameters:
 
-    plt.figure()
+plt.figure()
 
-    # ========================= 
-    # LOAD BASELINE 
-    # =========================
-    baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
+# ========================= 
+# LOAD BASELINE 
+# =========================
+baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_MAPE.csv"
 
-    if baseline_path.exists():
-        base_df = pd.read_csv(baseline_path)
+if baseline_path.exists():
+    base_df = pd.read_csv(baseline_path)
 
-        line, = plt.plot(
-            base_df["epoch"],
-            base_df[curve_var.lower()],
-            label="Baseline"
-        )
+    line, = plt.plot(
+        base_df["epoch"],
+        base_df["mape_mean"],
+        label=f"baseline"
+    )
 
-    else:
-        print(f"CSV curva baseline {curve_var} ainda não existe")
+    plt.fill_between(
+        base_df["epoch"],
+        base_df["mape_mean"] - base_df["mape_std"],
+        base_df["mape_mean"] + base_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
+else:
+    print(f"CSV curva baseline MAPE ainda não existe")
 
-    # ========================= 
-    # LOAD TL PESOS 
-    # =========================
-    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLap_{curve_var}_{MOTOR}_{var}.csv"
+# ========================= 
+# LOAD TL PESOS 
+# =========================
+TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLap_MAPE_{MOTOR}_{var}.csv"
 
-    if TL_PESOS_path.exists():
-        pesos_df = pd.read_csv(TL_PESOS_path)
+if TL_PESOS_path.exists():
+    pesos_df = pd.read_csv(TL_PESOS_path)
 
-        line, = plt.plot(
-            pesos_df["epoch"],
-            pesos_df[f"{curve_var.lower()}_mean"],
-            label=f"TLap_{curve_var}"
-        )
+    line, = plt.plot(
+        pesos_df["epoch"],
+        pesos_df["mape_mean"],
+        label=f"TL_pesos"
+    )
 
-        plt.fill_between(
-            pesos_df["epoch"],
-            pesos_df[f"{curve_var.lower()}_mean"] - pesos_df[f"{curve_var.lower()}_std"],
-            pesos_df[f"{curve_var.lower()}_mean"] + pesos_df[f"{curve_var.lower()}_std"],
-            color=line.get_color(),
-            alpha=0.25
-        )
+    plt.fill_between(
+        pesos_df["epoch"],
+        pesos_df["mape_mean"] - pesos_df["mape_std"],
+        pesos_df["mape_mean"] + pesos_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-    else:
-        print(f"CSV curva pesos {curve_var} ainda não existe")
+else:
+    print(f"CSV curva pesos MAPE ainda não existe")
 
-    for name,(curve_mean,curve_std) in results_curves.items():
+for name,(curve_mean,curve_std) in results_curves.items():
 
-        if curve_var not in name:
-            continue
+    curve_df = pd.DataFrame({
+        "epoch": np.arange(1, epochs + 1),
+        "mape_mean": curve_mean,
+        "mape_std": curve_std
+    })
 
-        curve_df = pd.DataFrame({
-            "epoch": np.arange(1, epochs+1),
-            f"{curve_var.lower()}_mean": curve_mean,
-            f"{curve_var.lower()}_std": curve_std
-        })
+    curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
 
-        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
+    curve_path.parent.mkdir(parents=True,exist_ok=True)
 
-        curve_path.parent.mkdir(parents=True,exist_ok=True)
+    curve_df.to_csv(curve_path,index=False)
 
-        curve_df.to_csv(curve_path,index=False)
+    print("Curva TL salva em:",curve_path)
 
-        print("Curva TL salva em:",curve_path)
+    line, = plt.plot(
+        curve_df["epoch"],
+        curve_df["mape_mean"],
+        label=name
+    )
 
-        line, = plt.plot(
-            curve_df["epoch"],
-            curve_df[f"{curve_var.lower()}_mean"],
-            label=name
-        )
+    plt.fill_between(
+        curve_df["epoch"],
+        curve_df["mape_mean"] - curve_df["mape_std"],
+        curve_df["mape_mean"] + curve_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-        plt.fill_between(
-            curve_df["epoch"],
-            curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
-            curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
-            color=line.get_color(),
-            alpha=0.25
-        )
+plt.xlabel("Epoch")
+plt.ylabel("MAPE")
 
-    plt.xlabel("Epoch")
-    plt.ylabel(curve_var)
+plt.title(f"{MOTOR}_{var} - TL:{MOTOR_TL} - TLa, TLap, Baseline - MAPE ")
 
-    plt.title(f"{MOTOR}_{var} - TL:{MOTOR_TL} - TLa, TLap, Baseline - {curve_var} ")
+plt.grid(True)
+plt.legend()
 
-    plt.grid(True)
-    plt.legend()
+save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
 
-    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
+save_fig.mkdir(parents=True,exist_ok=True)
 
-    save_fig.mkdir(parents=True,exist_ok=True)
+plt.savefig(save_fig / f"baseline_TLa_TLp-{MOTOR}_TL_{MOTOR_TL}_{var}_MAPE.png")
 
-    plt.savefig(save_fig / f"baseline_TLa_TLp-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
-
-    plt.show()
+plt.show()
 
 print("\nFIM")

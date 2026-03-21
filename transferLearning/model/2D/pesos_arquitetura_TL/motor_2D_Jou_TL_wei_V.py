@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
@@ -14,7 +13,6 @@ MOTOR = "2D"
 MOTOR_TL = "V"
 var = "Jou"
 target = ["joule"]
-curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
 IC_BASE_DIR = BASE_DIR.parent.parent.parent.parent
@@ -49,7 +47,7 @@ test_data["joule"]      = pd.read_csv(PATH / f"joule{TEST_FILE}")["total"]
 
 class TLRegressionModel(nn.Module):
 
-    def __init__(self, input_dim, peso_path, unlock_layers):
+    def __init__(self, input_dim, peso_path):
         super().__init__()
 
         full_model = torch.load(peso_path, map_location="cpu", weights_only=False)
@@ -62,15 +60,16 @@ class TLRegressionModel(nn.Module):
             nn.ReLU()
         )
 
+        #true = liberando tudo agr
         for p in self.pretrained_block.parameters():
-            p.requires_grad = False
+            p.requires_grad = True
 
-        layers = [layer for layer in self.pretrained_block if len(list(layer.parameters())) > 0]
+#        layers = [layer for layer in self.pretrained_block if len(list(layer.parameters())) > 0]
 
-        if unlock_layers > 0:
-            for layer in layers[-unlock_layers:]:
-                for p in layer.parameters():
-                    p.requires_grad = True
+#        if unlock_layers > 0:
+#            for layer in layers[-unlock_layers:]:
+#                for p in layer.parameters():
+#                    p.requires_grad = True
 
     def forward(self, x):
 
@@ -162,11 +161,11 @@ for name, param in temp_model.named_parameters():
     if layer_name not in trainable_layers:
         trainable_layers.append(layer_name)
 
-print("\nCamadas treináveis encontradas:", trainable_layers)
+#print("\nCamadas treináveis encontradas:", trainable_layers)
 
 max_unlock = len(trainable_layers)
 
-print("Máximo unlock_layers possível:", max_unlock)
+#print("Máximo unlock_layers possível:", max_unlock)
 
 # =========================
 # PARAMETERS
@@ -176,9 +175,6 @@ b_TL_lr = float(get_best_mape_row("learn_rate"))
 b_TL_neurons = int(get_best_mape_row("neurons"))
 b_TL_layers = int(get_best_mape_row("layers"))
 
-unlock_layers_list = list(range(0, max_unlock + 1))
-models = ["TLap", "TLa"]
-
 results_curves = {}
 
 # =========================
@@ -187,249 +183,215 @@ results_curves = {}
 epochs = 100
 seeds = 30
 
-best_unlock_mape = None
-best_unlock_rmse = None
+SAVE_CONTS = IC_BASE_DIR / "transferLearning" / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
 
-best_mean_curve_mape = None
-best_std_curve_mape = None
-
-best_mean_curve_rmse = None
-best_std_curve_rmse = None
-
-SAVE_CONTS = Path("transferLearning") / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
-
-columns = ["neurons","layers","lr","unlock_layers","epochs",f"{var}_score",f"{var}_mse",f"{var}_rmse",f"{var}_mape","time"]
+columns = ["seed", "max_neurons", "layers", "lr", "unlock_layers", "epoch", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
 info = pd.DataFrame(columns=columns)
 
 # =========================
 # MAIN LOOP
 # =========================
-for unlock in unlock_layers_list:
-    
-    print("=========")
-    print(f"\nTestando unlock_layers = {unlock}")
+
+
+mape_seeds = []
+
+for seed in range(seeds):
+
+    print("")
+    print(f"===== Seed {seed + 1} =====")
     print("")
 
-    mape_seeds = []
-    rmse_seeds = []
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
-    for seed in range(seeds):
+    model = TLRegressionModel(
+        input_dim=input_dim,
+        peso_path=ARQ_PESOS,
+    )
 
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
-        model = TLRegressionModel(
-            input_dim=input_dim,
-            peso_path=ARQ_PESOS,
-            unlock_layers=unlock
-        )
+    loss_func = nn.MSELoss()
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
+    optimizer = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=b_TL_lr
+    )
 
-        loss_func = nn.MSELoss()
+    mape_curve = []
 
-        optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=b_TL_lr
-        )
+    for ep in range(epochs):
 
-        mape_curve = []
-        rmse_curve = []
+        model.train()
 
-        start_time = datetime.datetime.now()
+        for X,y in train_loader_full:
 
-        for ep in range(epochs):
+            X,y = X.to(device),y.to(device)
 
-            model.train()
+            pred = model(X)
+            loss = loss_func(pred,y)
 
-            for X,y in train_loader_full:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        y_pred_list=[]
+        y_test_list=[]
+
+        model.eval()
+
+        with torch.no_grad():
+
+            for X,y in test_loader:
 
                 X,y = X.to(device),y.to(device)
 
-                pred = model(X)
-                loss = loss_func(pred,y)
+                y_pred_list.append(model(X))
+                y_test_list.append(y)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            y_pred_list=[]
-            y_test_list=[]
-
-            model.eval()
-
-            with torch.no_grad():
-
-                for X,y in test_loader:
-
-                    X,y = X.to(device),y.to(device)
-
-                    y_pred_list.append(model(X))
-                    y_test_list.append(y)
-
-            y_pred=torch.cat(y_pred_list).cpu()
-            y_test=torch.cat(y_test_list).cpu()
-
-            Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
-            Jou_rmse = np.sqrt(Jou_mse)
-            Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
-
-            mape_curve.append(Jou_mape)
-            rmse_curve.append(Jou_rmse)
-
-        print(f"seed: {seed +1} || MAPE 100% = {Jou_mape}  RMSE 100% = {Jou_rmse}")
-
-        mape_seeds.append(mape_curve)
-        rmse_seeds.append(rmse_curve)
+        y_pred=torch.cat(y_pred_list).cpu()
+        y_test=torch.cat(y_test_list).cpu()
 
         Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
+        Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+        Jou_rmse = np.sqrt(Jou_mse)
+        Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
 
-        end_time = datetime.datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
+        mape_curve.append(Jou_mape)
 
-        contents = [b_TL_neurons,b_TL_layers,b_TL_lr,unlock,epochs,Jou_score,Jou_mse,Jou_rmse,Jou_mape,elapsed_time]
-
+        contents = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, (ep+1), Jou_score, Jou_mse, Jou_rmse, Jou_mape]
         info = register_csv(contents, info, SAVE_CONTS)
 
-    # =========================
-    # CALCULA MÉDIA E STD
-    # =========================
+        if ((((ep+1)%50)== 0) or ((ep) == 0)):
+            print(f"Epoch {ep +1} || MAPE = {Jou_mape}")
 
-    mape_seeds = np.array(mape_seeds)
-    rmse_seeds = np.array(rmse_seeds)
+    mape_seeds.append(mape_curve)
 
-    mape_mean = mape_seeds.mean(axis=0)
-    mape_std  = mape_seeds.std(axis=0)
+    
 
-    rmse_mean = rmse_seeds.mean(axis=0)
-    rmse_std  = rmse_seeds.std(axis=0)
+    
 
-    score_mape = mape_mean[-1]
-    score_rmse = rmse_mean[-1]
+# =========================
+# CALCULA MÉDIA E STD
+# =========================
 
-    print("")
-    print("MAPE médio final:",score_mape)
-    print("RMSE médio final:",score_rmse)
+mape_seeds = np.array(mape_seeds)
 
-    if best_unlock_mape is None or score_mape < best_mean_curve_mape[-1]:
+mape_mean = mape_seeds.mean(axis=0)
+mape_std  = mape_seeds.std(axis=0)
 
-        best_unlock_mape = unlock
-        best_mean_curve_mape = mape_mean
-        best_std_curve_mape = mape_std
+score_mape = mape_mean[-1]
 
-    if best_unlock_rmse is None or score_rmse < best_mean_curve_rmse[-1]:
+print("")
+print("MAPE médio final:",score_mape)
 
-        best_unlock_rmse = unlock
-        best_mean_curve_rmse = rmse_mean
-        best_std_curve_rmse = rmse_std
-
-print(f"\nMelhor unlock_layers (MAPE) = {best_unlock_mape}")
-print(f"Melhor unlock_layers (RMSE) = {best_unlock_rmse}")
-
-results_curves[f"TLap_MAPE_unlock_{best_unlock_mape}"] = (best_mean_curve_mape, best_std_curve_mape)
-results_curves[f"TLap_RMSE_unlock_{best_unlock_rmse}"] = (best_mean_curve_rmse, best_std_curve_rmse)
-
+results_curves[f"TL_pesos"] = (mape_mean, mape_std)
 
 # =========================
 # SAVE + PLOT CURVES
 # =========================
 
-for curve_var in curve_parameters:
 
-    plt.figure()
-    
-    # ========================= 
-    # LOAD BASELINE 
-    # =========================
-    baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
 
-    if baseline_path.exists():
+plt.figure()
 
-        base_df = pd.read_csv(baseline_path)
+# ========================= 
+# LOAD BASELINE 
+# =========================
+baseline_path = IC_BASE_DIR / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_MAPE.csv"
 
-        line, = plt.plot(
-            base_df["epoch"],
-            base_df[curve_var.lower()],
-            label="Baseline"
-        )
+if baseline_path.exists():
 
-    else:
-        print(f"CSV curva baseline {curve_var} ainda não existe")
+    base_df = pd.read_csv(baseline_path)
 
-    # ========================= 
-    # LOAD TL ARQ 
-    # =========================
-    TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa_{curve_var}_{MOTOR}_{var}.csv"
+    line, = plt.plot(
+        base_df["epoch"],
+        base_df["mape_mean"],
+        label=f"Baseline"
+    )
 
-    if TL_PESOS_path.exists():
+    plt.fill_between(
+        base_df["epoch"],
+        base_df["mape_mean"] - base_df["mape_std"],
+        base_df["mape_mean"] + base_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-        pesos_df = pd.read_csv(TL_PESOS_path)
+else:
+    print(f"CSV curva baseline MAPE ainda não existe")
 
-        line, = plt.plot(
-            pesos_df["epoch"],
-            pesos_df[f"{curve_var.lower()}_mean"],
-            label=f"TLa_{curve_var}"
-        )
+# ========================= 
+# LOAD TL ARQ 
+# =========================
+TL_ARQ_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa_MAPE_{MOTOR}_{var}.csv"
 
-        plt.fill_between(
-            pesos_df["epoch"],
-            pesos_df[f"{curve_var.lower()}_mean"] - pesos_df[f"{curve_var.lower()}_std"],
-            pesos_df[f"{curve_var.lower()}_mean"] + pesos_df[f"{curve_var.lower()}_std"],
-            color=line.get_color(),
-            alpha=0.25
-        )
+if TL_ARQ_path.exists():
 
-    else:
-        print(f"CSV curva pesos {curve_var} ainda não existe")
+    arq_df = pd.read_csv(TL_ARQ_path)
 
-    for name,(curve_mean,curve_std) in results_curves.items():
+    line, = plt.plot(
+        arq_df["epoch"],
+        arq_df["mape_mean"],
+        label=f"TL_arquitetura"
+    )
 
-        if curve_var not in name:
-            continue
+    plt.fill_between(
+        arq_df["epoch"],
+        arq_df["mape_mean"] - arq_df["mape_std"],
+        arq_df["mape_mean"] + arq_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-        curve_df = pd.DataFrame({
-            "epoch": np.arange(1, epochs+1),
-            f"{curve_var.lower()}_mean": curve_mean,
-            f"{curve_var.lower()}_std": curve_std
-        })
+else:
+    print(f"CSV curva pesos MAPE ainda não existe")
 
-        curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
+for name,(curve_mean,curve_std) in results_curves.items():
 
-        curve_path.parent.mkdir(parents=True,exist_ok=True)
+    curve_df = pd.DataFrame({
+        "epoch": np.arange(1, epochs + 1),
+        "mape_mean": curve_mean,
+        "mape_std": curve_std
+    })
 
-        curve_df.to_csv(curve_path,index=False)
+    curve_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_{name}_{MOTOR}_{var}.csv"
 
-        print("Curva TL salva em:",curve_path)
+    curve_path.parent.mkdir(parents=True,exist_ok=True)
 
-        line, = plt.plot(
-            curve_df["epoch"],
-            curve_df[f"{curve_var.lower()}_mean"],
-            label=name
-        )
+    curve_df.to_csv(curve_path,index=False)
 
-        plt.fill_between(
-            curve_df["epoch"],
-            curve_df[f"{curve_var.lower()}_mean"] - curve_df[f"{curve_var.lower()}_std"],
-            curve_df[f"{curve_var.lower()}_mean"] + curve_df[f"{curve_var.lower()}_std"],
-            color=line.get_color(),
-            alpha=0.25
-        )
+    print("Curva TL salva em:",curve_path)
 
-    plt.xlabel("Epoch")
-    plt.ylabel(curve_var)
+    line, = plt.plot(
+        curve_df["epoch"],
+        curve_df["mape_mean"],
+        label=name
+    )
 
-    plt.title(f"{MOTOR}_{var} - TL:{MOTOR_TL} - TLa, TLap, Baseline - {curve_var} ")
+    plt.fill_between(
+        curve_df["epoch"],
+        curve_df["mape_mean"] - curve_df["mape_std"],
+        curve_df["mape_mean"] + curve_df["mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-    plt.grid(True)
-    plt.legend()
+plt.xlabel("Epoch")
+plt.ylabel("MAPE")
 
-    save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
+plt.title(f"{MOTOR}_{var} - TL:{MOTOR_TL} - TLa, TLap, Baseline - MAPE ")
 
-    save_fig.mkdir(parents=True,exist_ok=True)
+plt.grid(True)
+plt.legend()
 
-    plt.savefig(save_fig / f"baseline_TLa_TLp-{MOTOR}_TL_{MOTOR_TL}_{var}_{curve_var}.png")
+save_fig = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos"
 
-    plt.show()
+save_fig.mkdir(parents=True,exist_ok=True)
+
+plt.savefig(save_fig / f"baseline_TLa_TLp-{MOTOR}_TL_{MOTOR_TL}_{var}_MAPE.png")
+
+plt.show()
 
 print("\nFIM")

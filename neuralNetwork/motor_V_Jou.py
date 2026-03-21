@@ -13,7 +13,6 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percenta
 MOTOR = "V"
 var = "Jou"
 target = ['joule']
-curve_parameters = ["MAPE", "RMSE"]
 
 BASE_DIR = Path(__file__).resolve().parent
 PATH = BASE_DIR.parent / "dataset" / MOTOR
@@ -78,15 +77,14 @@ class MotorDataset(Dataset):
 # =========================
 # REGISTER
 # =========================
-def register_csv(contents, info):
+def register_csv(contents, info, path):
     new_row = pd.DataFrame([contents], columns = info.columns)
     info = pd.concat([info, new_row])
-    BASE_DIR = Path(__file__).resolve().parent
-    SAVE_PATH = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info.csv"
-    info.to_csv(SAVE_PATH, index=False)
+    info.to_csv(path, index=False)
     return info
 
-columns = ['neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape', 'time'] 
+save_path = BASE_DIR / ".." / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info.csv"
+columns = ['max_neurons', 'layers', 'learn_rate', 'epochs', f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape'] 
 info = pd.DataFrame(columns = columns)
 
 # =========================
@@ -98,11 +96,12 @@ learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
 
+seeds = 30
+
 results_curves = {}
 best_mape = float("inf")
-best_rmse = float("inf")
 curve_mape = []
-curve_rmse = []
+media_mape_epochs = []
 
 # =========================
 # DATASETS
@@ -117,9 +116,7 @@ test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 # GLOBAL BEST
 # =========================
 best_mape = float("inf")
-best_rmse = float("inf")
 best_model_mape = None
-best_model_rmse = None
 
 best_curve_global = None
 
@@ -145,10 +142,6 @@ for i in range(len(neurons)):
 
             loss_func = nn.MSELoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rates[k])
-            start_time = datetime.datetime.now()
-
-            mape_epoch = []
-            rmse_epoch = []
 
             # ===== TRAIN POR EPOCH =====
             for ep in range(epochs):
@@ -184,74 +177,160 @@ for i in range(len(neurons)):
                 Jou_mse = mean_squared_error(y_test.detach().numpy(), y_pred.detach().numpy())
                 Jou_rmse=np.sqrt(Jou_mse)
                 Jou_mape = mean_absolute_percentage_error(y_test.numpy(), y_pred.numpy())
-
-                mape_epoch.append(Jou_mape)
-                rmse_epoch.append(Jou_rmse)
             
             if Jou_mape < best_mape:
                     best_mape = Jou_mape
-                    curve_mape = mape_epoch.copy()
                     best_model_mape = model.linear
+                    b_neurons = neurons[i]
+                    b_neurons_per_layer = int(neurons[i]/layers[j])
+                    b_layers = layers[j]
+                    b_lr = learning_rates[k]
 
-            if Jou_rmse < best_rmse:
-                    best_rmse = Jou_rmse
-                    curve_rmse = rmse_epoch.copy()
-                    best_model_rmse = model
-
-            print(f"MAPE = {Jou_mape}       || RMSE = {Jou_rmse}")
-            print(f"Best MAPE = {best_mape} || Best RMSE = {best_rmse}")
+            print(f"MAPE = {Jou_mape}")
+            print(f"Best MAPE = {best_mape}")
             print("")
 
-            end_time = datetime.datetime.now()
-            elapsed_time = (end_time - start_time).total_seconds()    
-            contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_rmse, Jou_mape, elapsed_time]
-            info = register_csv(contents, info)
+            contents = [neurons[i], layers[j], learning_rates[k], epochs, Jou_score, Jou_mse, Jou_rmse, Jou_mape]
+            info = register_csv(contents, info, save_path)
 
-results_curves["baseline_MAPE"] = (curve_mape)
-results_curves["baseline_RMSE"] = (curve_rmse)
+# =========================
+# GRÁFICO
+# =========================
+print("============")
+print(f"\n Melhor modelo: neurons = {b_neurons} - layers = {b_layers} - lr = {b_lr}")
+print("============")
 
-for curve_var in curve_parameters:
+columns = ['seed', 'max_neurons', 'layers', 'learn_rate',  "epoch", f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape'] 
+info = pd.DataFrame(columns = columns)
 
-    plt.figure()
 
-    for name,(curve) in results_curves.items():
+for seed in range(seeds):
 
-        if curve_var not in name:
-            continue
+    print("")
+    print(f"===== Seed {seed + 1} =====")
+    print("")
 
-        curve_df = pd.DataFrame({
-            "epoch": np.arange(1, epochs+1),
-            f"{curve_var.lower()}": curve,
-        })
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    model = RegressionModel(input_dim, 1, b_neurons_per_layer, b_layers).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=b_lr)
 
-        plt.plot(
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    
+    mape_epochs = []
+
+    for ep in range(epochs):
+
+        model.train()
+
+        for X,y in train_loader_full:
+
+            X,y = X.to(device),y.to(device)
+
+            pred = model(X)
+            loss = loss_func(pred,y)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        y_pred_list=[]
+        y_test_list=[]
+
+        model.eval()
+
+        with torch.no_grad():
+
+            for X,y in test_loader:
+
+                X,y = X.to(device),y.to(device)
+
+                y_pred_list.append(model(X))
+                y_test_list.append(y)
+
+        y_pred=torch.cat(y_pred_list).cpu()
+        y_test=torch.cat(y_test_list).cpu()
+
+        Jou_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+        Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+        Jou_rmse = np.sqrt(Jou_mse)
+        Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+
+        mape_epochs.append(Jou_mape)
+
+        contents = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), Jou_score, Jou_mse, Jou_rmse, Jou_mape]
+        save = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_per_epochs.csv"
+        info = register_csv(contents, info, save)
+
+        if ((((ep+1)%50)== 0) or ((ep) == 0)):
+            print(f"Epoch {ep +1} || MAPE = {Jou_mape}")
+
+    media_mape_epochs.append(mape_epochs)
+
+
+# =========================
+# CALCULA MÉDIA E STD
+# =========================
+
+mape_array = np.array(media_mape_epochs)
+
+mape_mean = np.mean(mape_array, axis=0)
+mape_std  = np.std(mape_array, axis=0)
+
+score_mape = mape_mean[-1]
+
+print("")
+print("MAPE médio final:",score_mape)
+
+results_curves[f"Baseline"] = (mape_mean, mape_std)
+
+# =========================
+# PLOT
+# =========================
+plt.figure()
+
+for name,(curve_mean,curve_std) in results_curves.items():
+
+    curve_df = pd.DataFrame({
+        "epoch": np.arange(1, epochs + 1),
+        "mape_mean": curve_mean,
+        "mape_std": curve_std
+    })
+
+    line, = plt.plot(
             curve_df["epoch"],
-            curve_df[f"{curve_var.lower()}"],
+            curve_df[f"mape_mean"],
             label=name
         )
 
+    plt.fill_between(
+        curve_df["epoch"],
+        curve_df[f"mape_mean"] - curve_df[f"mape_std"],
+        curve_df[f"mape_mean"] + curve_df[f"mape_std"],
+        color=line.get_color(),
+        alpha=0.25
+    )
 
-    # =========================
-    # PLOT
-    # =========================
-    
-    plt.xlabel("Epoch")
-    plt.ylabel(f"{curve_var}")
-    plt.title(f"{MOTOR}_{var} — Baseline")
-    plt.grid(True)
-    plt.legend()
-    plt.show()
 
-    # =========================
-    # SAVE CURVE
-    # =========================
 
-    SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_{curve_var}.csv"
-    SAVE_CURVE.parent.mkdir(parents=True, exist_ok=True)
-    curve_df.to_csv(SAVE_CURVE, index=False)
-    print("\nCurva salva em:", SAVE_CURVE)
+plt.xlabel("Epoch")
+plt.ylabel(f"MAPE")
+plt.title(f"{MOTOR}_{var} — Baseline")
+plt.grid(True)
+plt.legend()
+plt.show()
 
-    
+# =========================
+# SAVE CURVE
+# =========================
+
+SAVE_CURVE = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / "graficos" / f"curve_baseline_epochs_{MOTOR}_{var}_MAPE.csv"
+SAVE_CURVE.parent.mkdir(parents=True, exist_ok=True)
+curve_df.to_csv(SAVE_CURVE, index=False)
+print("\nCurva salva em:", SAVE_CURVE)
+
+
 # =========================
 # SAVE BEST WEIGHTS
 # =========================

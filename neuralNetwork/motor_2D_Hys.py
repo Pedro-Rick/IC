@@ -259,7 +259,7 @@ for seed in range(seeds):
 
         mape_epochs.append(Hys_mape)
 
-        contents = [seed, b_neurons, b_layers, b_lr, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+        contents = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         save = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_per_epochs.csv"
         info = register_csv(contents, info, save)
 
