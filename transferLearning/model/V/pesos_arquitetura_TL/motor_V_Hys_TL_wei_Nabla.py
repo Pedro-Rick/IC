@@ -172,7 +172,7 @@ max_unlock = len(trainable_layers)
 # =========================
 
 b_TL_lr = float(get_best_mape_row("learn_rate"))
-b_TL_neurons = int(get_best_mape_row("neurons"))
+b_TL_neurons = int(get_best_mape_row("max_neurons"))
 b_TL_layers = int(get_best_mape_row("layers"))
 
 results_curves = {}
