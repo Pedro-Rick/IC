@@ -267,7 +267,7 @@ else:
 # ========================= 
 # LOAD TL PESOS 
 # =========================
-TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLap_MAPE_{MOTOR}_{var}.csv"
+TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TL_pesos_MAPE_{MOTOR}_{var}.csv"
 
 if TL_PESOS_path.exists():
     pesos_df = pd.read_csv(TL_PESOS_path)

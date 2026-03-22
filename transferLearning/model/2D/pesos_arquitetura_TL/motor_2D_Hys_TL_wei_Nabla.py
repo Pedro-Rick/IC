@@ -325,7 +325,7 @@ else:
 # ========================= 
 # LOAD TL ARQ 
 # =========================
-TL_ARQ_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TLa_MAPE_{MOTOR}_{var}.csv"
+TL_ARQ_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TL_arquitetura_{MOTOR}_{var}.csv"
 
 if TL_ARQ_path.exists():
 
@@ -346,7 +346,7 @@ if TL_ARQ_path.exists():
     )
 
 else:
-    print(f"CSV curva pesos MAPE ainda não existe")
+    print(f"CSV curva arquitetua MAPE ainda não existe")
 
 for name,(curve_mean,curve_std) in results_curves.items():
 
