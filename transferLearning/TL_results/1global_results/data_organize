@@ -1,0 +1,139 @@
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# FAZER O LOOP PARA LER E GERAR TODOS OS CSVS NECESSÁRIOS (var, motor, etc...)
+
+# 
+
+# =========================
+# CONFIG
+# =========================
+
+motor = ["2D", "Nabla", "V"]
+var = ["Jou", "Hys"]
+motor_TL = ["2D", "Nabla", "V"]
+
+# =========================
+# 
+# =========================
+
+BASE_PATH = Path("CAMINHO/DA/PASTA")  # <- ajuste aqui
+
+files = {
+    "Baseline": BASE_PATH / "baseline.csv",
+    "TL_arquitetura": BASE_PATH / "tla.csv",
+    "TL_pesos": BASE_PATH / "tlp.csv"
+}
+
+OUTPUT_PATH = BASE_PATH / "resumo_estabilidade.csv"
+
+# =========================
+# FUNÇÃO DE MÉTRICAS
+# =========================
+
+def compute_metrics(csv_path):
+    
+    df = pd.read_csv(csv_path)
+
+    # ordena
+    df = df.sort_values(["epoch", "seed"])
+
+    # =========================
+    # STD por epoch
+    # =========================
+    std_por_epoch = df.groupby("epoch")["Hys_mape"].std()
+
+    # =========================
+    # AREA DO STD
+    # =========================
+    area_std = np.trapz(std_por_epoch.values) / len(std_por_epoch)
+
+    # =========================
+    # STD últimas 10 epochs
+    # =========================
+    std_10 = std_por_epoch.tail(10).mean()
+
+    # =========================
+    # STD final (última epoch)
+    # =========================
+    std_final = std_por_epoch.iloc[-1]
+
+    # =========================
+    # MAPE geral (tudo)
+    # =========================
+    mape_geral = df["Hys_mape"].mean()
+
+    # =========================
+    # PEGAR APENAS ÚLTIMA EPOCH POR SEED
+    # =========================
+    df_final = df.loc[df.groupby("seed")["epoch"].idxmax()]
+
+    final_mapes = df_final["Hys_mape"].values
+
+    # =========================
+    # MÉTRICAS FINAIS
+    # =========================
+    media_final = np.mean(final_mapes)
+    std_final_check = np.std(final_mapes)  # redundante, mas útil p/ conferência
+
+    cv_final = std_final / media_final if media_final != 0 else np.nan
+
+    mape_pior = np.max(final_mapes)
+    mape_melhor = np.min(final_mapes)
+
+    range_final = mape_pior - mape_melhor
+
+    return (
+        area_std,
+        std_10,
+        std_final,
+        mape_geral,
+        cv_final,
+        range_final,
+        mape_pior,
+        media_final,
+        mape_melhor
+    )
+
+
+# =========================
+# LOOP PRINCIPAL
+# =========================
+
+results = []
+
+for nome_modelo, path in files.items():
+
+    if not path.exists():
+        print(f"Arquivo não encontrado: {path}")
+        continue
+
+    metrics = compute_metrics(path)
+
+    results.append([nome_modelo, *metrics])
+
+
+# =========================
+# SALVAR CSV FINAL
+# =========================
+
+columns = [
+    "modelo",
+    "std_geral",      # area_std
+    "std_10",
+    "std_final",
+    "mape_geral",
+    "cv_final",
+    "range",
+    "mape_pior",
+    "media_final",
+    "mape_melhor"
+]
+
+df_results = pd.DataFrame(results, columns=columns)
+
+df_results.to_csv(OUTPUT_PATH, index=False)
+
+print("\nResumo salvo em:", OUTPUT_PATH)
+print(df_results)
