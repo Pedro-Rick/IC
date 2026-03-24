@@ -10,7 +10,7 @@ motor = ["2D", "Nabla", "V"]
 motor_TL = ["2D", "Nabla", "V"]
 
 PATH = Path(__file__).resolve().parent
-BASE_PATH = PATH.parents[3]
+BASE_PATH = PATH.parents[2]
 
 
 # =========================
@@ -94,10 +94,10 @@ for v in var:
                 continue
 
             # coluna em minúsculo
-            metric_col = f"{v.lower()}_mape"
+            metric_col = f"{v}_mape"
 
             files = {
-                "Baseline": BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_per_epoch.csv",
+                "Baseline": BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_per_epochs.csv",
                 "TL_arquitetura": BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"{m}_TL_arq_{tl}_{v}_info.csv",
                 "TL_pesos": BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"{m}_TL_arq_wei_{tl}_{v}_info.csv"
             }
