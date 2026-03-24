@@ -2,39 +2,26 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# FAZER O LOOP PARA LER E GERAR TODOS OS CSVS NECESSÁRIOS (var, motor, etc...)
-
-# 
-
 # =========================
 # CONFIG
 # =========================
-
+var = ["Jou", "Hys"]  # maiúsculo (usado nos arquivos)
 motor = ["2D", "Nabla", "V"]
-var = ["Jou", "Hys"]
 motor_TL = ["2D", "Nabla", "V"]
 
-# =========================
-# 
-# =========================
+PATH = Path(__file__).resolve().parent
+BASE_PATH = PATH.parents[3]
 
-BASE_PATH = Path("CAMINHO/DA/PASTA")  # <- ajuste aqui
-
-files = {
-    "Baseline": BASE_PATH / "baseline.csv",
-    "TL_arquitetura": BASE_PATH / "tla.csv",
-    "TL_pesos": BASE_PATH / "tlp.csv"
-}
-
-OUTPUT_PATH = BASE_PATH / "resumo_estabilidade.csv"
 
 # =========================
 # FUNÇÃO DE MÉTRICAS
 # =========================
+def compute_metrics(csv_path, metric_col):
 
-def compute_metrics(csv_path):
-    
     df = pd.read_csv(csv_path)
+
+    # segurança contra NaN
+    df = df.dropna(subset=[metric_col])
 
     # ordena
     df = df.sort_values(["epoch", "seed"])
@@ -42,15 +29,15 @@ def compute_metrics(csv_path):
     # =========================
     # STD por epoch
     # =========================
-    std_por_epoch = df.groupby("epoch")["Hys_mape"].std()
+    std_por_epoch = df.groupby("epoch")[metric_col].std()
 
     # =========================
-    # AREA DO STD
+    # AREA DO STD (estabilidade ao longo do treino)
     # =========================
     area_std = np.trapz(std_por_epoch.values) / len(std_por_epoch)
 
     # =========================
-    # STD últimas 10 epochs
+    # STD últimas 10 epochs (pós-convergência)
     # =========================
     std_10 = std_por_epoch.tail(10).mean()
 
@@ -62,20 +49,18 @@ def compute_metrics(csv_path):
     # =========================
     # MAPE geral (tudo)
     # =========================
-    mape_geral = df["Hys_mape"].mean()
+    mape_geral = df[metric_col].mean()
 
     # =========================
-    # PEGAR APENAS ÚLTIMA EPOCH POR SEED
+    # ÚLTIMA EPOCH POR SEED
     # =========================
     df_final = df.loc[df.groupby("seed")["epoch"].idxmax()]
-
-    final_mapes = df_final["Hys_mape"].values
+    final_mapes = df_final[metric_col].values
 
     # =========================
     # MÉTRICAS FINAIS
     # =========================
     media_final = np.mean(final_mapes)
-    std_final_check = np.std(final_mapes)  # redundante, mas útil p/ conferência
 
     cv_final = std_final / media_final if media_final != 0 else np.nan
 
@@ -100,40 +85,66 @@ def compute_metrics(csv_path):
 # =========================
 # LOOP PRINCIPAL
 # =========================
+for v in var:
+    for m in motor:
+        for tl in motor_TL:
 
-results = []
+            # evita comparar motor com ele mesmo
+            if m == tl:
+                continue
 
-for nome_modelo, path in files.items():
+            # coluna em minúsculo
+            metric_col = f"{v.lower()}_mape"
 
-    if not path.exists():
-        print(f"Arquivo não encontrado: {path}")
-        continue
+            files = {
+                "Baseline": BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_per_epoch.csv",
+                "TL_arquitetura": BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"{m}_TL_arq_{tl}_{v}_info.csv",
+                "TL_pesos": BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"{m}_TL_arq_wei_{tl}_{v}_info.csv"
+            }
 
-    metrics = compute_metrics(path)
+            OUTPUT_PATH = (
+                BASE_PATH
+                / "transferLearning"
+                / "TL_results"
+                / "1global_results"
+                / f"grafic_metrics-{m}_TL_{tl}_{v}.csv"
+            )
 
-    results.append([nome_modelo, *metrics])
+            results = []
 
+            for nome_modelo, path in files.items():
 
-# =========================
-# SALVAR CSV FINAL
-# =========================
+                if not path.exists():
+                    print(f"Arquivo não encontrado: {path}")
+                    continue
 
-columns = [
-    "modelo",
-    "std_geral",      # area_std
-    "std_10",
-    "std_final",
-    "mape_geral",
-    "cv_final",
-    "range",
-    "mape_pior",
-    "media_final",
-    "mape_melhor"
-]
+                try:
+                    metrics = compute_metrics(path, metric_col)
+                    results.append([nome_modelo, *metrics])
 
-df_results = pd.DataFrame(results, columns=columns)
+                except Exception as e:
+                    print(f"Erro ao processar {path}: {e}")
 
-df_results.to_csv(OUTPUT_PATH, index=False)
+            # =========================
+            # SALVAR CSV FINAL
+            # =========================
+            columns = [
+                "modelo",
+                "area_std",
+                "std_10",
+                "std_final",
+                "mape_geral",
+                "cv_final",
+                "range",
+                "mape_pior",
+                "media_final",
+                "mape_melhor"
+            ]
 
-print("\nResumo salvo em:", OUTPUT_PATH)
-print(df_results)
+            df_results = pd.DataFrame(results, columns=columns)
+
+            OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            df_results.to_csv(OUTPUT_PATH, index=False)
+
+            print("\nResumo salvo em:", OUTPUT_PATH)
+            print(df_results)
