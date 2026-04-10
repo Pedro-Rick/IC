@@ -1,0 +1,165 @@
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# =========================
+# CONFIG
+# =========================
+var = ["Jou", "Hys"]
+motor = ["2D", "Nabla", "V"]
+motor_TL = ["2D", "Nabla", "V"]
+
+PATH = Path(__file__).resolve().parent
+BASE_PATH = PATH.parents[2]
+
+
+# =========================
+# MÉTRICAS (FINAL POR SEED)
+# =========================
+def compute_final_metrics(mape_values):
+
+    mape_values = np.array(mape_values)
+
+    mape_mean = np.mean(mape_values)
+    mape_std  = np.std(mape_values)
+
+    mape_best  = np.min(mape_values)
+    mape_worst = np.max(mape_values)
+
+    range_val = mape_worst - mape_best
+
+    cv = mape_std / mape_mean if mape_mean != 0 else np.nan
+
+    area_std = mape_std
+
+    return [
+        len(mape_values),
+        mape_mean,
+        mape_std,
+        area_std,
+        cv,
+        range_val,
+        mape_best,
+        mape_worst
+    ]
+
+
+# =========================
+# BASELINE
+# =========================
+def process_baseline(csv_path, metric_col):
+
+    df = pd.read_csv(csv_path)
+    df = df.dropna(subset=[metric_col])
+
+    # última epoch por seed
+    df_final = df.loc[df.groupby("seed")["epoch"].idxmax()]
+    final_mapes = df_final[metric_col].values
+
+    return compute_final_metrics(final_mapes)
+
+
+# =========================
+# FRAÇÃO (TL)
+# =========================
+def process_fraction(csv_path, metric_col, label_prefix):
+
+    df = pd.read_csv(csv_path)
+    df = df.dropna(subset=[metric_col])
+
+    results = []
+
+    grouped = df.groupby("data_fraction")
+
+    for frac, group in grouped:
+
+        mape_values = group[metric_col].values
+
+        metrics = compute_final_metrics(mape_values)
+
+        model_name = f"{label_prefix}_{frac}"
+
+        results.append([model_name, *metrics])
+
+    return results
+
+
+# =========================
+# LOOP PRINCIPAL
+# =========================
+for v in var:
+    for m in motor:
+        for tl in motor_TL:
+
+            if m == tl:
+                continue
+
+            metric_col = f"{v}_mape"
+
+            # =========================
+            # PATHS
+            # =========================
+            baseline_path = BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_per_epochs.csv"
+
+            frac_arq_path = BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"percent_data_{m}_TL_arq_{tl}_{v}_info.csv"
+
+            frac_wei_path = BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"percent_data_{m}_TL_arq_wei_{tl}_{v}_info.csv"
+
+            OUTPUT_GLOBAL = (BASE_PATH / "transferLearning" / "TL_results" / "1global_results" / "fraction_metrics" / f"fraction_metrics_{m}_TL_{tl}_{v}.csv")
+
+            results_global = []
+
+            # =========================
+            # BASELINE
+            # =========================
+            if baseline_path.exists():
+                try:
+                    metrics = process_baseline(baseline_path, metric_col)
+                    results_global.append(["Baseline", *metrics])
+                except Exception as e:
+                    print(f"Erro baseline: {e}")
+
+            # =========================
+            # FRAÇÃO ARQ
+            # =========================
+            if frac_arq_path.exists():
+                try:
+                    results_global.extend(
+                        process_fraction(frac_arq_path, metric_col, "TL_arq_frac")
+                    )
+                except Exception as e:
+                    print(f"Erro frac_arq: {e}")
+
+            # =========================
+            # FRAÇÃO WEI
+            # =========================
+            if frac_wei_path.exists():
+                try:
+                    results_global.extend(
+                        process_fraction(frac_wei_path, metric_col, "TL_wei_frac")
+                    )
+                except Exception as e:
+                    print(f"Erro frac_wei: {e}")
+
+            # =========================
+            # SALVAR CSV FINAL
+            # =========================
+            columns = [
+                "modelo",
+                "n_seeds",
+                "mape_mean",
+                "mape_std",
+                "area_std",
+                "cv_final",
+                "range",
+                "mape_best",
+                "mape_worst"
+            ]
+
+            df_global = pd.DataFrame(results_global, columns=columns)
+
+            OUTPUT_GLOBAL.parent.mkdir(parents=True, exist_ok=True)
+            df_global.to_csv(OUTPUT_GLOBAL, index=False)
+
+            print("\nSalvo em:", OUTPUT_GLOBAL)
+            print(df_global)
