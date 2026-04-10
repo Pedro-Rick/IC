@@ -238,6 +238,9 @@ for frac in fractions:
                 if ((((ep+1)%50)== 0) or ((ep) == 0)):
                     print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
 
+        if (frac != 1):
+            print(f"SCORE = {Hys_score} || MAPE = {Hys_mape}") 
+        
         contents_fraction = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, (ep+1), n_samples, frac, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         info_percent = register_csv(contents_fraction, info_percent, SAVE_CONTS_PERCENT)
         
@@ -288,7 +291,7 @@ else:
 # ========================= 
 # LOAD TL PESOS 
 # =========================
-TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TL_pesos_MAPE_{MOTOR}_{var}.csv"
+TL_PESOS_path = IC_BASE_DIR / "transferLearning" / "TL_results" / f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / "graficos" / f"curve_TL_pesos_{MOTOR}_{var}.csv"
 
 if TL_PESOS_path.exists():
     pesos_df = pd.read_csv(TL_PESOS_path)
