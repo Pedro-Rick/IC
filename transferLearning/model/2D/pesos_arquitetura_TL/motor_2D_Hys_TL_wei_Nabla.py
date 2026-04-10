@@ -207,7 +207,7 @@ for frac in fractions:
 
         # subset
         n_samples = int(len(train_shuffled) * frac)
-        train_subset = train_shuffled.iloc[:n_samples]
+        train_subset = train_data.sample(frac=frac, random_state=seed)
 
         train_dataset = MotorDataset(train_subset.drop(columns=target), train_subset[target])
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
