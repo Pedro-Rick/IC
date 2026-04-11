@@ -133,13 +133,11 @@ def get_best_mape_row(parameter):
 # =========================
 # DATA LOADERS
 # =========================
-
 BATCH_SIZE = 256
 
 train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
 test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
 
-train_loader_full = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 input_dim = len(train_data.columns.drop(target))
@@ -170,107 +168,117 @@ max_unlock = len(trainable_layers)
 # =========================
 # PARAMETERS
 # =========================
-
 b_TL_lr = float(get_best_mape_row("learn_rate"))
 b_TL_neurons = int(get_best_mape_row("max_neurons"))
 b_TL_layers = int(get_best_mape_row("layers"))
 
 results_curves = {}
+mape_seeds = []
+
+columns = ["seed", "max_neurons", "layers", "lr", "unlock_layers", "epoch", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
+info = pd.DataFrame(columns=columns)
+columns_percent = ["seed", "max_neurons", "layers", "lr", "unlock_layers", "epoch", "n_samples", "data_fraction", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
+info_percent = pd.DataFrame(columns=columns_percent)
+
+SAVE_CONTS = IC_BASE_DIR / "transferLearning" / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
+SAVE_CONTS_PERCENT = IC_BASE_DIR / "transferLearning" / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"percent_data_{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
 
 # =========================
 # CONFIG
 # =========================
 epochs = 100
 seeds = 30
-
-SAVE_CONTS = IC_BASE_DIR / "transferLearning" / "TL_results"/ f"{MOTOR}" / f"{MOTOR}_TL_{MOTOR_TL}" / f"{MOTOR}_TL_arq_wei_{MOTOR_TL}_{var}_info.csv"
-
-columns = ["seed", "max_neurons", "layers", "lr", "unlock_layers", "epoch", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
-info = pd.DataFrame(columns=columns)
+fractions = [0.1, 0.25, 0.5, 1]
 
 # =========================
 # MAIN LOOP
 # =========================
+for frac in fractions:
 
+    print(f"\n===== FRACTION {int(frac*100)}% =====\n")
 
-mape_seeds = []
+    for seed in range(seeds):
+        print("")
+        print(f"===== Seed {seed + 1} =====")
+        print("")
 
-for seed in range(seeds):
+        # embaralha
+        train_shuffled = train_data.sample(frac=1, random_state=seed).reset_index(drop=True)
 
-    print("")
-    print(f"===== Seed {seed + 1} =====")
-    print("")
+        # subset
+        n_samples = int(len(train_shuffled) * frac)
+        train_subset = train_data.sample(frac=frac, random_state=seed)
 
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+        train_dataset = MotorDataset(train_subset.drop(columns=target), train_subset[target])
+        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    model = TLRegressionModel(
-        input_dim=input_dim,
-        peso_path=ARQ_PESOS,
-    )
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+        model = TLRegressionModel(input_dim=input_dim, peso_path=ARQ_PESOS,)
 
-    loss_func = nn.MSELoss()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
 
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=b_TL_lr
-    )
+        loss_func = nn.MSELoss()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=b_TL_lr)
 
-    mape_curve = []
+        mape_epochs = []
 
-    for ep in range(epochs):
+        for ep in range(epochs):
 
-        model.train()
+            model.train()
 
-        for X,y in train_loader_full:
-
-            X,y = X.to(device),y.to(device)
-
-            pred = model(X)
-            loss = loss_func(pred,y)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        y_pred_list=[]
-        y_test_list=[]
-
-        model.eval()
-
-        with torch.no_grad():
-
-            for X,y in test_loader:
+            for X,y in train_loader:
 
                 X,y = X.to(device),y.to(device)
 
-                y_pred_list.append(model(X))
-                y_test_list.append(y)
+                pred = model(X)
+                loss = loss_func(pred,y)
 
-        y_pred=torch.cat(y_pred_list).cpu()
-        y_test=torch.cat(y_test_list).cpu()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-        Jou_score=r2_score(y_test.numpy(),y_pred.numpy())
-        Jou_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
-        Jou_rmse = np.sqrt(Jou_mse)
-        Jou_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+            y_pred_list=[]
+            y_test_list=[]
 
-        mape_curve.append(Jou_mape)
+            model.eval()
 
-        contents = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, (ep+1), Jou_score, Jou_mse, Jou_rmse, Jou_mape]
-        info = register_csv(contents, info, SAVE_CONTS)
+            with torch.no_grad():
 
-        if ((((ep+1)%50)== 0) or ((ep) == 0)):
-            print(f"Epoch {ep +1} || MAPE = {Jou_mape}")
+                for X,y in test_loader:
 
-    mape_seeds.append(mape_curve)
+                    X,y = X.to(device),y.to(device)
 
-    
+                    y_pred_list.append(model(X))
+                    y_test_list.append(y)
 
-    
+            y_pred=torch.cat(y_pred_list).cpu()
+            y_test=torch.cat(y_test_list).cpu()
+            
+            Hys_score=r2_score(y_test.numpy(),y_pred.numpy())
+            Hys_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+            Hys_rmse = np.sqrt(Hys_mse)
+            Hys_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+
+            if (frac == 1):
+                mape_epochs.append(Hys_mape)
+
+                contents = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+                info = register_csv(contents, info, SAVE_CONTS)
+
+                if ((((ep+1)%50)== 0) or ((ep) == 0)):
+                    print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
+
+        if (frac != 1):
+            print(f"SCORE = {Hys_score} || MAPE = {Hys_mape}")            
+            
+        contents_fraction = [(seed+1), b_TL_neurons, b_TL_layers, b_TL_lr, max_unlock, (ep+1), n_samples, frac, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+        info_percent = register_csv(contents_fraction, info_percent, SAVE_CONTS_PERCENT)
+        
+        if (frac == 1):
+            mape_seeds.append(mape_epochs)
 
 # =========================
 # CALCULA MÉDIA E STD
@@ -288,14 +296,8 @@ print("MAPE médio final:",score_mape)
 
 results_curves[f"TL_pesos"] = (mape_mean, mape_std)
 
-# =========================
-# SAVE + PLOT CURVES
-# =========================
-
-
 
 plt.figure()
-
 # ========================= 
 # LOAD BASELINE 
 # =========================
@@ -346,8 +348,11 @@ if TL_ARQ_path.exists():
     )
 
 else:
-    print(f"CSV curva arquitetura MAPE ainda não existe")
+    print(f"CSV curva arquitetua MAPE ainda não existe")
 
+# =========================
+# SAVE + PLOT CURVES
+# =========================
 for name,(curve_mean,curve_std) in results_curves.items():
 
     curve_df = pd.DataFrame({

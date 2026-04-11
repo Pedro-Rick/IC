@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import datetime
 import matplotlib.pyplot as plt
 
 import torch
@@ -95,6 +94,7 @@ layers = [1, 2, 5, 10]
 learning_rates = [0.1, 0.01]
 epochs = 100
 BATCH_SIZE = 256
+fractions = [0.1, 0.25, 0.5, 1]
 
 seeds = 30
 
@@ -194,7 +194,7 @@ for i in range(len(neurons)):
             info = register_csv(contents, info, save_path)
 
 # =========================
-# GRÁFICO
+# P/ GRÁFICO
 # =========================
 print("============")
 print(f"\n Melhor modelo: neurons = {b_neurons} - layers = {b_layers} - lr = {b_lr}")
@@ -202,71 +202,100 @@ print("============")
 
 columns = ['seed', 'max_neurons', 'layers', 'learn_rate',  "epoch", f'{var}_score', f'{var}_mse', f'{var}_rmse', f'{var}_mape'] 
 info = pd.DataFrame(columns = columns)
+save = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_per_epochs.csv"
+
+# =========================
+#  P/ PORCENTAGEM
+# =========================
+train_dataset = MotorDataset(train_data.drop(columns=target), train_data[target])
+test_dataset  = MotorDataset(test_data.drop(columns=target), test_data[target])
+
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+columns_percent = ["seed", "max_neurons", "layers", "lr", "epoch", "n_samples", "data_fraction", f"{var}_score", f"{var}_mse", f"{var}_rmse", f"{var}_mape"]
+info_percent = pd.DataFrame(columns=columns_percent)
+save_percent = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_percent.csv"
 
 
-for seed in range(seeds):
+for frac in fractions:
+    for seed in range(seeds):
 
-    print("")
-    print(f"===== Seed {seed + 1} =====")
-    print("")
+        print("")
+        print(f"===== Seed {seed + 1} =====")
+        print("")
+        
+        # embaralha
+        train_shuffled = train_data.sample(frac=1, random_state=seed).reset_index(drop=True)
 
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    model = RegressionModel(input_dim, 1, b_neurons_per_layer, b_layers).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=b_lr)
+        # subset
+        n_samples = int(len(train_shuffled) * frac)
+        train_subset = train_data.sample(frac=frac, random_state=seed)
 
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    
-    mape_epochs = []
+        train_dataset = MotorDataset(train_subset.drop(columns=target), train_subset[target])
+        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    for ep in range(epochs):
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
-        model.train()
+        model = RegressionModel(input_dim, 1, b_neurons_per_layer, b_layers).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=b_lr)
 
-        for X,y in train_loader_full:
+        mape_epochs = []
 
-            X,y = X.to(device),y.to(device)
+        for ep in range(epochs):
 
-            pred = model(X)
-            loss = loss_func(pred,y)
+            model.train()
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        y_pred_list=[]
-        y_test_list=[]
-
-        model.eval()
-
-        with torch.no_grad():
-
-            for X,y in test_loader:
+            for X,y in train_loader:
 
                 X,y = X.to(device),y.to(device)
 
-                y_pred_list.append(model(X))
-                y_test_list.append(y)
+                pred = model(X)
+                loss = loss_func(pred,y)
 
-        y_pred=torch.cat(y_pred_list).cpu()
-        y_test=torch.cat(y_test_list).cpu()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-        Hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
-        Hys_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
-        Hys_rmse = np.sqrt(Hys_mse)
-        Hys_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+            y_pred_list=[]
+            y_test_list=[]
 
-        mape_epochs.append(Hys_mape)
+            model.eval()
 
-        contents = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
-        save = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{var}_info_per_epochs.csv"
-        info = register_csv(contents, info, save)
+            with torch.no_grad():
 
-        if ((((ep+1)%50)== 0) or ((ep) == 0)):
-            print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
+                for X,y in test_loader:
 
-    media_mape_epochs.append(mape_epochs)
+                    X,y = X.to(device),y.to(device)
+
+                    y_pred_list.append(model(X))
+                    y_test_list.append(y)
+
+            y_pred=torch.cat(y_pred_list).cpu()
+            y_test=torch.cat(y_test_list).cpu()
+
+            Hys_score = r2_score(y_test.detach().numpy(), y_pred.detach().numpy())
+            Hys_mse = mean_squared_error(y_test.numpy(),y_pred.numpy())
+            Hys_rmse = np.sqrt(Hys_mse)
+            Hys_mape = mean_absolute_percentage_error(y_test.numpy(),y_pred.numpy())
+
+            if (frac == 1):
+                mape_epochs.append(Hys_mape)
+
+                contents = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+                info = register_csv(contents, info, save)
+
+                if ((((ep+1)%50)== 0) or ((ep) == 0)):
+                    print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
+
+        if (frac != 1):
+            print(f"SCORE = {Hys_score} || MAPE = {Hys_mape}") 
+
+        contents_fraction = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), n_samples, frac, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
+        info_percent = register_csv(contents_fraction, info_percent, save_percent)
+
+        if (frac == 1):
+            media_mape_epochs.append(mape_epochs)
 
 
 # =========================
