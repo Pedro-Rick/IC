@@ -127,6 +127,7 @@ for v in var:
                 / "transferLearning"
                 / "TL_results"
                 / "1global_results"
+                / "fraction_metrics"
                 / f"metrics_{m}_TL_{tl}_{v}.csv"
             )
 
@@ -134,6 +135,7 @@ for v in var:
                 BASE_PATH
                 / "transferLearning"
                 / "TL_results"
+                / "1global_results"
                 / "fraction_metrics"
                 / "graficos"
                 / f"plot_{m}_TL_{tl}_{v}.png"
