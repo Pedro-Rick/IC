@@ -28,7 +28,7 @@ def compute_metrics(mape_values):
 
     range_val = mape_worst - mape_best
 
-    cv = mape_std / mape_mean if mape_mean != 0 else np.nan
+    cv = mape_std / mape_mean if mape_mean > 1e-8 else np.nan
 
     area_std = mape_std
 
@@ -75,24 +75,24 @@ def plot_fraction_curve(df, title, save_path):
 
     plt.figure(figsize=(8, 5))
 
-    modelos = df["modelo"].unique()
+    for modelo in df["modelo"].unique():
 
-    for modelo in modelos:
+        df_model = df[df["modelo"] == modelo].copy()
 
-        x = df_model["data_fraction"]
+        df_model = df_model.sort_values("data_fraction")
 
-        df_model["frac"] = df_model["modelo"].apply(
-            lambda x: float(x.split("_")[-1])
-        )
-
-        df_model = df_model.sort_values("frac")
-
-        x = df_model["frac"].values
+        x = df_model["data_fraction"].values
         y = df_model["mape_mean"].values
         std = df_model["mape_std"].values
 
-        plt.plot(x, y, marker='o', label=modelo)
-        plt.fill_between(x, y - std, y + std, alpha=0.2)
+        colors = {
+            "Baseline": "black",
+            "TL_arq": "blue",
+            "TL_wei": "green"
+        }
+
+        plt.plot(x, y, marker='o', label=modelo, color=colors.get(modelo))
+        plt.fill_between(x, y - std, y + std, alpha=0.2, color=colors.get(modelo))
 
     plt.xlabel("Data Fraction")
     plt.ylabel("MAPE Mean")
@@ -116,7 +116,7 @@ for v in var:
 
             metric_col = f"{v}_mape"
 
-            baseline_path = BASE_PATH / "results_patu" / m / f"percent_data_baseline_{m}_{v}_info.csv"
+            baseline_path = BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_percent.csv"
 
             frac_arq_path = BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"percent_data_{m}_TL_arq_{tl}_{v}_info.csv"
 
@@ -170,18 +170,19 @@ for v in var:
             # =========================
             columns = [
                 "modelo",
-                "data_fractions",
+                "data_fraction",   # ✅ singular
                 "n_seeds",
-                "mean_mape",
-                "std_mape",
+                "mape_mean",
+                "mape_std",
                 "area_std",
                 "cv_final",
                 "range",
-                "best_mape",
-                "worst_mape"
+                "mape_best",
+                "mape_worst"
             ]
 
             df_global = pd.DataFrame(results_global, columns=columns)
+            df_global["data_fraction"] = df_global["data_fraction"].astype(float)
 
             OUTPUT_GLOBAL.parent.mkdir(parents=True, exist_ok=True)
             df_global.to_csv(OUTPUT_GLOBAL, index=False)
