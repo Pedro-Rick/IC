@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from pathlib import Path
 
 # =========================
@@ -12,11 +13,10 @@ motor_TL = ["2D", "Nabla", "V"]
 PATH = Path(__file__).resolve().parent
 BASE_PATH = PATH.parents[2]
 
-
 # =========================
-# MÉTRICAS (FINAL POR SEED)
+# MÉTRICAS
 # =========================
-def compute_final_metrics(mape_values):
+def compute_metrics(mape_values):
 
     mape_values = np.array(mape_values)
 
@@ -43,26 +43,10 @@ def compute_final_metrics(mape_values):
         mape_worst
     ]
 
-
 # =========================
-# BASELINE
+# PROCESSAMENTO
 # =========================
-def process_baseline(csv_path, metric_col):
-
-    df = pd.read_csv(csv_path)
-    df = df.dropna(subset=[metric_col])
-
-    # última epoch por seed
-    df_final = df.loc[df.groupby("seed")["epoch"].idxmax()]
-    final_mapes = df_final[metric_col].values
-
-    return compute_final_metrics(final_mapes)
-
-
-# =========================
-# FRAÇÃO (TL)
-# =========================
-def process_fraction(csv_path, metric_col, label_prefix):
+def process_fraction_file(csv_path, metric_col, label_prefix):
 
     df = pd.read_csv(csv_path)
     df = df.dropna(subset=[metric_col])
@@ -74,15 +58,51 @@ def process_fraction(csv_path, metric_col, label_prefix):
     for frac, group in grouped:
 
         mape_values = group[metric_col].values
+        metrics = compute_metrics(mape_values)
 
-        metrics = compute_final_metrics(mape_values)
-
-        model_name = f"{label_prefix}_{frac}"
-
-        results.append([model_name, *metrics])
+        results.append([
+            label_prefix,
+            frac,
+            *metrics
+        ])
 
     return results
 
+# =========================
+# PLOT
+# =========================
+def plot_fraction_curve(df, title, save_path):
+
+    plt.figure(figsize=(8, 5))
+
+    modelos = df["modelo"].unique()
+
+    for modelo in modelos:
+
+        x = df_model["data_fraction"]
+
+        df_model["frac"] = df_model["modelo"].apply(
+            lambda x: float(x.split("_")[-1])
+        )
+
+        df_model = df_model.sort_values("frac")
+
+        x = df_model["frac"].values
+        y = df_model["mape_mean"].values
+        std = df_model["mape_std"].values
+
+        plt.plot(x, y, marker='o', label=modelo)
+        plt.fill_between(x, y - std, y + std, alpha=0.2)
+
+    plt.xlabel("Data Fraction")
+    plt.ylabel("MAPE Mean")
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(save_path, dpi=300)
+    plt.close()
 
 # =========================
 # LOOP PRINCIPAL
@@ -96,16 +116,28 @@ for v in var:
 
             metric_col = f"{v}_mape"
 
-            # =========================
-            # PATHS
-            # =========================
-            baseline_path = BASE_PATH / "results_patu" / m / f"motor_{m}_{v}_info_per_epochs.csv"
+            baseline_path = BASE_PATH / "results_patu" / m / f"percent_data_baseline_{m}_{v}_info.csv"
 
             frac_arq_path = BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"percent_data_{m}_TL_arq_{tl}_{v}_info.csv"
 
             frac_wei_path = BASE_PATH / "transferLearning" / "TL_results" / m / f"{m}_TL_{tl}" / f"percent_data_{m}_TL_arq_wei_{tl}_{v}_info.csv"
 
-            OUTPUT_GLOBAL = (BASE_PATH / "transferLearning" / "TL_results" / "1global_results" / "fraction_metrics" / f"fraction_metrics_{m}_TL_{tl}_{v}.csv")
+            OUTPUT_GLOBAL = (
+                BASE_PATH
+                / "transferLearning"
+                / "TL_results"
+                / "1global_results"
+                / f"metrics_{m}_TL_{tl}_{v}.csv"
+            )
+
+            PLOT_PATH = (
+                BASE_PATH
+                / "transferLearning"
+                / "TL_results"
+                / "fraction_metrics"
+                / "graficos"
+                / f"plot_{m}_TL_{tl}_{v}.png"
+            )
 
             results_global = []
 
@@ -113,47 +145,40 @@ for v in var:
             # BASELINE
             # =========================
             if baseline_path.exists():
-                try:
-                    metrics = process_baseline(baseline_path, metric_col)
-                    results_global.append(["Baseline", *metrics])
-                except Exception as e:
-                    print(f"Erro baseline: {e}")
+                results_global.extend(
+                    process_fraction_file(baseline_path, metric_col, "Baseline")
+                )
 
             # =========================
-            # FRAÇÃO ARQ
+            # TL ARQ
             # =========================
             if frac_arq_path.exists():
-                try:
-                    results_global.extend(
-                        process_fraction(frac_arq_path, metric_col, "TL_arq_frac")
-                    )
-                except Exception as e:
-                    print(f"Erro frac_arq: {e}")
+                results_global.extend(
+                    process_fraction_file(frac_arq_path, metric_col, "TL_arq")
+                )
 
             # =========================
-            # FRAÇÃO WEI
+            # TL WEI
             # =========================
             if frac_wei_path.exists():
-                try:
-                    results_global.extend(
-                        process_fraction(frac_wei_path, metric_col, "TL_wei_frac")
-                    )
-                except Exception as e:
-                    print(f"Erro frac_wei: {e}")
+                results_global.extend(
+                    process_fraction_file(frac_wei_path, metric_col, "TL_wei")
+                )
 
             # =========================
-            # SALVAR CSV FINAL
+            # SALVAR CSV
             # =========================
             columns = [
                 "modelo",
+                "data_fractions",
                 "n_seeds",
-                "mape_mean",
-                "mape_std",
+                "mean_mape",
+                "std_mape",
                 "area_std",
                 "cv_final",
                 "range",
-                "mape_best",
-                "mape_worst"
+                "best_mape",
+                "worst_mape"
             ]
 
             df_global = pd.DataFrame(results_global, columns=columns)
@@ -161,5 +186,13 @@ for v in var:
             OUTPUT_GLOBAL.parent.mkdir(parents=True, exist_ok=True)
             df_global.to_csv(OUTPUT_GLOBAL, index=False)
 
-            print("\nSalvo em:", OUTPUT_GLOBAL)
-            print(df_global)
+            print("\nCSV salvo em:", OUTPUT_GLOBAL)
+
+            # =========================
+            # PLOT
+            # =========================
+            if not df_global.empty:
+                title = f"{m} | TL from {tl} | {v}"
+                plot_fraction_curve(df_global, title, PLOT_PATH)
+
+                print("Plot salvo em:", PLOT_PATH)

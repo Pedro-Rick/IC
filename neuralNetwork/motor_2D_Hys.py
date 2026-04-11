@@ -288,6 +288,9 @@ for frac in fractions:
                 if ((((ep+1)%50)== 0) or ((ep) == 0)):
                     print(f"Epoch {ep +1} || MAPE = {Hys_mape}")
 
+        if (frac != 1):
+            print(f"SCORE = {Hys_score} || MAPE = {Hys_mape}") 
+
         contents_fraction = [(seed+1), b_neurons, b_layers, b_lr, (ep+1), n_samples, frac, Hys_score, Hys_mse, Hys_rmse, Hys_mape]
         info_percent = register_csv(contents_fraction, info_percent, save_percent)
 
