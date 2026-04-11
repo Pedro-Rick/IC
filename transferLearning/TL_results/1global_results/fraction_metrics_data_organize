@@ -128,7 +128,7 @@ for v in var:
                 / "TL_results"
                 / "1global_results"
                 / "fraction_metrics"
-                / f"metrics_{m}_TL_{tl}_{v}.csv"
+                / f"fraction_metrics_{m}_TL_{tl}_{v}.csv"
             )
 
             PLOT_PATH = (

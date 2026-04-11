@@ -1,2 +1,1 @@
-modelo,n_seeds,mape_mean,mape_std,area_std,cv_final,range,mape_best,mape_worst
-Baseline,30,0.09142935151855149,0.028285421050839265,0.028285421050839265,0.309369153133499,0.1607363447546959,0.0632076188921928,0.2239439636468887
+modelo,data_fraction,n_seeds,mape_mean,mape_std,area_std,cv_final,range,mape_best,mape_worst
