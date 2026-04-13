@@ -218,6 +218,9 @@ save_percent = BASE_DIR.parent / "results_patu" / f"{MOTOR}" / f"motor_{MOTOR}_{
 
 
 for frac in fractions:
+
+    print(f"\n===== FRACTION {int(frac*100)}% =====\n")
+    
     for seed in range(seeds):
 
         print("")
